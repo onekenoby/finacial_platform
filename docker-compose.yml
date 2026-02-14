@@ -1,0 +1,82 @@
+##########################################
+### -> powershell as administrator
+##########################################
+
+##avvio automatico
+# Set-Service com.docker.service -StartupType Automatic
+# Start-Service com.docker.service
+
+##avvio stack
+# docker compose up -d
+
+##stop (senza perdere dati)
+# docker compose stop
+
+##restart
+# docker compose restart
+
+##log
+# docker compose logs -f --tail=200
+##########################################
+
+# version: "3.8" better to remove
+
+services:
+  # --- 1. MEMORIA STORICA (SQL + Timescale) ---
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: ai_timescale
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin_password
+      POSTGRES_DB: ai_ingestion
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - ai_network
+
+  # --- 2. CERVELLO VETTORIALE (Qdrant) ---
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ai_qdrant
+    restart: always
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    networks:
+      - ai_network
+
+  # --- 3. GRAFO (Neo4j) ---
+  neo4j:
+    image: neo4j:latest
+    container_name: financial_graph
+    restart: always
+    ports:
+      - "7474:7474"  # Browser UI
+      - "7687:7687"  # Bolt
+    environment:
+      NEO4J_AUTH: "neo4j/password_sicura"
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+    volumes:
+      - ./neo4j_data:/data
+    networks:
+      - ai_network
+
+  libreoffice:
+    image: linuxserver/libreoffice:latest
+    container_name: libreoffice_conv
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Rome
+    volumes:
+      - ./data_ingestion:/work
+    restart: unless-stopped
+
+networks:
+  ai_network:
+    driver: bridge

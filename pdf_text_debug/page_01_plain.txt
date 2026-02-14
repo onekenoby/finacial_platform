@@ -1,0 +1,170 @@
+S17
+1
+Financial Management (FM)
+Formulae sheet and maths tables
+Formulae Sheet 
+Economic order quantity 
+=
+2C0D
+Ch
+MillerOrr Model 
+The Capital Asset Pricing Model 
+E ri( ) = Rf + βi E rm
+( ) Rf
+(
+)
+The asset beta formula 
+ 
+The Growth Model 
+Gordons growth approximation 
+g = bre 
+The weighted average cost of capital 
+The Fisher formula 
+1+ i
+(
+) = 1+ r
+(
+) 1+ h
+(
+)
+Purchasing power parity and interest rate parity 
+S1 = S0 × 1+ hc
+(
+)
+1+ hb
+(
+)
+ F0 = S0 × 1+ ic
+(
+)
+1+ ib
+(
+)
+Return point = Lower limit + ( 1
+3
+spread
+Spr
+×
+)
+ead
+transaction cost
+variance of cash
+=
+×
+×
+3
+3
+4
+flows
+interest rate
+
+
+³
+³
+
+
+µ
+µ
+1
+3
+β
+β
+a
+e
+e
+d
+e
+d
+e
+d
+V
+V
+V
+T
+V
+T
+V
+V
+=
++
+(
+)
+(
+)
+
+
+³
+³
+³
+
+
+µ
+µ
+µ
++
+(
+)
++
+1
+1
+1
+
+
+ T
+d
+(
+)
+(
+)
+
+
+³
+³
+³
+
+
+µ
+µ
+µ
+β
+WACC
+V
+V
+V
+k
+V
+V
+V
+k
+T
+e
+e
+d
+e
+d
+e
+d
+d
+=
++
+
+
+³
+³
+
+
+µ
+µ
++
++
+
+
+³
+³
+
+
+µ
+µ
+1 
+(
+)

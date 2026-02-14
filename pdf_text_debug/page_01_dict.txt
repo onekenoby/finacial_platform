@@ -1,0 +1,169 @@
+Financial Management (FM)
+Formulae sheet and maths tables
+Formulae Sheet 
+Economic order quantity 
+2C0D
+=
+Ch
+MillerOrr Model 
+Return point = Lower limit + ( 1
+spread
+)
+×
+3
+1
+
+
+3
+3
+transaction cost
+variance of cash
+flows
+×
+×
+³
+µ
+4
+Spr
+ead
+3
+=
+³
+µ
+interest rate
+
+
+The Capital Asset Pricing Model 
+(
+)
+E ri( ) = Rf + βi E rm
+( ) Rf
+The asset beta formula 
+)
+(
+
+
+
+
+V
+1
+
+T
+V
+d
+³
+µ
+³
+µ
+e
+β
+=
+β
++
+β
+)
+)
+(
+(
+a
+e
+d
+)
+)
+(
+(
+³
+µ
+³
+µ
+V
+V
+1
+
+T
+V
+V
+1
+ T
++
++
+e
+d
+e
+d
+³
+µ
+³
+µ
+
+
+
+
+The Growth Model 
+Gordons growth approximation 
+g = bre 
+The weighted average cost of capital 
+V
+V
+
+
+
+
+)
+(
+e
+d
+WACC
+k
+k
+1 
+T
+³
+µ
+³
+µ
+=
++
+e
+d
+V
+V
+V
+V
++
++
+³
+µ
+³
+µ
+e
+d
+e
+d
+
+
+
+
+The Fisher formula 
+(
+) = 1+ r
+(
+) 1+ h
+(
+)
+1+ i
+Purchasing power parity and interest rate parity 
+(
+)
+(
+)
+S1 = S0 × 1+ hc
+ F0 = S0 × 1+ ic
+)
+)
+(
+(
+1+ hb
+1+ ib
+S17
+1
