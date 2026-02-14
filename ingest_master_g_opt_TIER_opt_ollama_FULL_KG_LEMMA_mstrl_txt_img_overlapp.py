@@ -26,8 +26,6 @@ import sys
 # --- FIX ANTI-BLOCCO ---
 # Impostiamo queste variabili PRIMA di importare altre librerie pesanti.
 # Questo risolve il freeze quando si calcolano gli embeddings mentre Ollama è attivo.
-
-# --- FIX ANTI-BLOCCO + PERFORMANCE CPU ---
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # valori "safe" (evitano oversubscription e spesso evitano freeze)
@@ -3576,9 +3574,6 @@ def extract_pdf_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
     return add_context_windows(out_chunks)
 
 
-# ==============================================================================
-# DISPATCHER FILE
-# ==============================================================================
 
 # ==============================================================================
 # PATTERN GENERALISTA PER LA MATEMATICA
