@@ -1530,8 +1530,8 @@
     "qualifier": ""
   },
   "ASSOCIATED_WITH": {
-    "verb": "LINK",
-    "object": "",
+    "verb": "ASSOCIATE",
+    "object": "ENTITY",
     "qualifier": ""
   },
   "DEPENDS_ON": {
@@ -9351,8 +9351,8 @@
   },
   "INVESTIRE_IN": {
     "verb": "INVEST",
-    "object": "",
-    "qualifier": "IN"
+    "object": "COMPANY",
+    "qualifier": ""
   },
   "PERFORMANTI": {
     "verb": "PERFORM",
@@ -18471,7 +18471,7 @@
   },
   "IS_DIVIDED_INTO": {
     "verb": "DIVIDE",
-    "object": "PART",
+    "object": "",
     "qualifier": ""
   },
   "IS_PAID_BY": {
@@ -21286,8 +21286,8 @@
   },
   "DISTRIBUTED_THROUGH": {
     "verb": "DISTRIBUTE",
-    "object": "CHANNEL",
-    "qualifier": ""
+    "object": "",
+    "qualifier": "THROUGH"
   },
   "HAS_AGE": {
     "verb": "HAVE",
@@ -25651,7 +25651,7 @@
   },
   "HAS_CHARACTERISTIC": {
     "verb": "HAVE",
-    "object": "",
+    "object": "CHARACTERISTIC",
     "qualifier": ""
   },
   "CAN_DO": {
@@ -28337,6 +28337,876 @@
   "MODIFIED": {
     "verb": "MODIFY",
     "object": "",
+    "qualifier": ""
+  },
+  "DISMISURA": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FINANZIAMENTO": {
+    "verb": "SUPPORT",
+    "object": "INDUSTRY",
+    "qualifier": ""
+  },
+  "INDUSTRIA": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "RISORSA": {
+    "verb": "USE",
+    "object": "RESOURCE",
+    "qualifier": ""
+  },
+  "SFRUTTAMENTO": {
+    "verb": "EXPLOIT",
+    "object": "",
+    "qualifier": ""
+  },
+  "COMPONGONO": {
+    "verb": "COMPOSE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "GESTISCONO": {
+    "verb": "MANAGE",
+    "object": "",
+    "qualifier": ""
+  },
+  "INFLUENZANO": {
+    "verb": "INFLUENCIA",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROMUOVONO": {
+    "verb": "PROMOTE",
+    "object": "",
+    "qualifier": ""
+  },
+  "REGOLANO": {
+    "verb": "REGULATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "UTILIZZANO": {
+    "verb": "USE",
+    "object": "",
+    "qualifier": ""
+  },
+  "END_OF_ADOPTION": {
+    "verb": "END",
+    "object": "ADOPTION",
+    "qualifier": ""
+  },
+  "END_OF_VALIDITY": {
+    "verb": "END",
+    "object": "VALIDITY",
+    "qualifier": ""
+  },
+  "IMPLEMENTED": {
+    "verb": "IMPLEMENT",
+    "object": "",
+    "qualifier": ""
+  },
+  "ORIGINATED_IN": {
+    "verb": "ORIGINATE",
+    "object": "PLACE",
+    "qualifier": "IN"
+  },
+  "VALIDITY_PERIOD": {
+    "verb": "HAVE",
+    "object": "PERIOD",
+    "qualifier": ""
+  },
+  "ALTERNATIVA": {
+    "verb": "CONSIDER",
+    "object": "",
+    "qualifier": ""
+  },
+  "APPLICAZIONE": {
+    "verb": "APPLY",
+    "object": "",
+    "qualifier": ""
+  },
+  "BASE": {
+    "verb": "FOUND",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONTESTO": {
+    "verb": "SITUATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PARTECIPAZIONE": {
+    "verb": "PARTICIPATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "INFLUENZATO DA": {
+    "verb": "INFLUENCIA",
+    "object": "POLICY",
+    "qualifier": ""
+  },
+  "REGOLATO DA": {
+    "verb": "REGULATE",
+    "object": "POLICIES",
+    "qualifier": ""
+  },
+  "È DIVISA IN": {
+    "verb": "DIVIDE",
+    "object": "",
+    "qualifier": "IN"
+  },
+  "IS BASED ON": {
+    "verb": "BASED",
+    "object": "",
+    "qualifier": ""
+  },
+  "IS USED IN": {
+    "verb": "USED",
+    "object": "",
+    "qualifier": ""
+  },
+  "TRANSMITS": {
+    "verb": "TRANSMIT",
+    "object": "",
+    "qualifier": ""
+  },
+  "D INT R SS ST NT N": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": "N"
+  },
+  "DIMINUIR": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FISS S N IÙ": {
+    "verb": "SIGN",
+    "object": "AGREEMENT",
+    "qualifier": "IÙ"
+  },
+  "H NN L ST SS FFID BILITÀ": {
+    "verb": "TRUST",
+    "object": "",
+    "qualifier": "BILITÀ"
+  },
+  "IM R S RIV T": {
+    "verb": "IMPOSE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "RIGU ARD": {
+    "verb": "APPROVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "TR BB DIMINUIR": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": "DIMINUIR"
+  },
+  "CONSEGUENZA": {
+    "verb": "FOLLOW",
+    "object": "",
+    "qualifier": "A"
+  },
+  "SUBORDINATO A": {
+    "verb": "SUBJECT_TO",
+    "object": "",
+    "qualifier": "A"
+  },
+  "COMPRENSIONE": {
+    "verb": "UNDERSTAND",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONTE NUTO": {
+    "verb": "INVEST",
+    "object": "FUNDS",
+    "qualifier": ""
+  },
+  "INVESTIMENTO": {
+    "verb": "INVEST",
+    "object": "FUNDS",
+    "qualifier": ""
+  },
+  "LIMITE": {
+    "verb": "SET",
+    "object": "LIMIT",
+    "qualifier": ""
+  },
+  "REGOLAMENTO": {
+    "verb": "REGULATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "UTILIZZAZIONE": {
+    "verb": "USE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROVIDES CAPITAL": {
+    "verb": "PROVIDE",
+    "object": "CAPITAL",
+    "qualifier": ""
+  },
+  "SEEKS INFORMATION": {
+    "verb": "SEEK",
+    "object": "INFORMATION",
+    "qualifier": ""
+  },
+  "ADAPTS TO": {
+    "verb": "ADAPT",
+    "object": "TOPIC",
+    "qualifier": "TO"
+  },
+  "APPLICA": {
+    "verb": "APPLY",
+    "object": "",
+    "qualifier": ""
+  },
+  "È UN RISULTATO DI": {
+    "verb": "RESULT_FROM",
+    "object": "",
+    "qualifier": ""
+  },
+  "È UNA MISURA DI": {
+    "verb": "BE_MEASURE_OF",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONNECTED BY": {
+    "verb": "CONNECT",
+    "object": "CONNECTION",
+    "qualifier": ""
+  },
+  "CAN BE ACCEPTED AS": {
+    "verb": "ACCEPT",
+    "object": "STANDARD",
+    "qualifier": ""
+  },
+  "CONTROLLED BY": {
+    "verb": "CONTROL",
+    "object": "",
+    "qualifier": ""
+  },
+  "DEVELOPED A NETWORK OF": {
+    "verb": "DEVELOP",
+    "object": "NETWORK",
+    "qualifier": ""
+  },
+  "HAS EQUAL VALUE TO": {
+    "verb": "EQUAL",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "NOT REGULATED BY": {
+    "verb": "REGULATE",
+    "object": "",
+    "qualifier": "NOT"
+  },
+  "SHOWING INTEREST IN": {
+    "verb": "SHOW",
+    "object": "INTEREST",
+    "qualifier": "IN"
+  },
+  "FUNDS": {
+    "verb": "PROVIDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "LOCATED IN": {
+    "verb": "LOCATE",
+    "object": "PLACE",
+    "qualifier": "IN"
+  },
+  "MEMBER OF": {
+    "verb": "BELONG",
+    "object": "GROUP",
+    "qualifier": ""
+  },
+  "REFERS TO": {
+    "verb": "REFER",
+    "object": "",
+    "qualifier": ""
+  },
+  "ADVISED_ON": {
+    "verb": "ADVICE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "SIGNIFICANTLY_INFLUENCED": {
+    "verb": "INFLUENCE",
+    "object": "ENTITY",
+    "qualifier": ""
+  },
+  "OPPOSTO": {
+    "verb": "OBJECT",
+    "object": "",
+    "qualifier": ""
+  },
+  "BASIS FOR": {
+    "verb": "SUPPORT",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "ARE TYPES OF": {
+    "verb": "IS",
+    "object": "",
+    "qualifier": "TYPES"
+  },
+  "CAN IMPROVE": {
+    "verb": "IMPROVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CAN LEAD TO": {
+    "verb": "LEAD",
+    "object": "",
+    "qualifier": "TO"
+  },
+  "IS A STRATEGY FOR": {
+    "verb": "IS",
+    "object": "STRATEGY",
+    "qualifier": "FOR"
+  },
+  "IS FUNDED BY": {
+    "verb": "FUND",
+    "object": "",
+    "qualifier": "BY"
+  },
+  "AMÉLIORE": {
+    "verb": "IMPROVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "IMPLIQUE": {
+    "verb": "ENTAIL",
+    "object": "",
+    "qualifier": ""
+  },
+  "RÉDUIT": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "ARE A TYPE OF": {
+    "verb": "BE",
+    "object": "TYPE",
+    "qualifier": ""
+  },
+  "CAN BE MANAGED BY": {
+    "verb": "MANAGE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CAN INCLUDE": {
+    "verb": "INCLUDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CAN RESULT IN": {
+    "verb": "RESULT",
+    "object": "",
+    "qualifier": ""
+  },
+  "MAY INVOLVE": {
+    "verb": "INVOLVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROVIDE INFORMATION ABOUT": {
+    "verb": "PROVIDE",
+    "object": "INFORMATION",
+    "qualifier": "ABOUT"
+  },
+  "CARATTERISTICHE": {
+    "verb": "DESCRIBE",
+    "object": "FEATURE",
+    "qualifier": ""
+  },
+  "AZIONE": {
+    "verb": "ACTION",
+    "object": "",
+    "qualifier": ""
+  },
+  "CARATTERISTICA": {
+    "verb": "DESCRIBE",
+    "object": "",
+    "qualifier": ""
+  },
+  "COMPONENTE": {
+    "verb": "CONTAIN",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONTENUTO": {
+    "verb": "INCLUDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FATTORE": {
+    "verb": "CAUSE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FUNZIONE": {
+    "verb": "PURPOSE",
+    "object": "",
+    "qualifier": ""
+  },
+  "OGGETTO": {
+    "verb": "BE",
+    "object": "",
+    "qualifier": ""
+  },
+  "RISULTATO": {
+    "verb": "RESULT",
+    "object": "",
+    "qualifier": ""
+  },
+  "I HÉ GLI INV STIM NTI IMM BILI RI RI HI D N D": {
+    "verb": "INVITE",
+    "object": "",
+    "qualifier": "D"
+  },
+  "IN M D D TT GLI T": {
+    "verb": "MEET",
+    "object": "GLIT",
+    "qualifier": "T"
+  },
+  "IT L BL T R M SI": {
+    "verb": "DECLARE",
+    "object": "STATEMENT",
+    "qualifier": "SI"
+  },
+  "R QU ST N N È SSIBIL": {
+    "verb": "REQUEST",
+    "object": "",
+    "qualifier": "SSIBIL"
+  },
+  "T GLI MINIM L V T": {
+    "verb": "APPROVE",
+    "object": "MINIMUM",
+    "qualifier": "V T"
+  },
+  "CATEGORY OF": {
+    "verb": "DESCRIBE",
+    "object": "CATEGORY",
+    "qualifier": ""
+  },
+  "CONNECTS TO": {
+    "verb": "LINK",
+    "object": "ENTITY",
+    "qualifier": ""
+  },
+  "FACILITATES TRADING OF": {
+    "verb": "ENABLE",
+    "object": "COMMODITY",
+    "qualifier": ""
+  },
+  "ACHIEVED_OVER": {
+    "verb": "ACHIEVE",
+    "object": "OBJECTIVE",
+    "qualifier": "OVER"
+  },
+  "REGULATED BY": {
+    "verb": "REGULATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FUND": {
+    "verb": "FUND",
+    "object": "",
+    "qualifier": ""
+  },
+  "FINANZIANO": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "ASSOCIATED WITH": {
+    "verb": "LINK",
+    "object": "",
+    "qualifier": ""
+  },
+  "FOCUSES ON": {
+    "verb": "FOCUS",
+    "object": "",
+    "qualifier": ""
+  },
+  "OPERATES IN": {
+    "verb": "OPERATE",
+    "object": "LOCATION",
+    "qualifier": ""
+  },
+  "EFFETTO": {
+    "verb": "HAVE",
+    "object": "EFFECT",
+    "qualifier": ""
+  },
+  "BENEFICIA": {
+    "verb": "BENEFIT",
+    "object": "",
+    "qualifier": ""
+  },
+  "CARATTERISTICA DI": {
+    "verb": "DESCRIBE",
+    "object": "FEATURE",
+    "qualifier": ""
+  },
+  "COMPRENDONO": {
+    "verb": "INCLUDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FORNISCONO": {
+    "verb": "PROVIDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "OBIETTIVO DI": {
+    "verb": "AIM",
+    "object": "",
+    "qualifier": ""
+  },
+  "POTENZIALE": {
+    "verb": "POSSESS",
+    "object": "POTENTIAL",
+    "qualifier": ""
+  },
+  "MINACCIA": {
+    "verb": "THREATEN",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROMUOVE": {
+    "verb": "PROMOTE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONTRASTS": {
+    "verb": "COMPARE",
+    "object": "",
+    "qualifier": ""
+  },
+  "AUTHOROF": {
+    "verb": "WRITE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FOCUSESON": {
+    "verb": "FOCUS",
+    "object": "",
+    "qualifier": ""
+  },
+  "EXPLAINS": {
+    "verb": "EXPLAIN",
+    "object": "",
+    "qualifier": ""
+  },
+  "AIMS TO SATISFY": {
+    "verb": "SATISFY",
+    "object": "EMPTY",
+    "qualifier": ""
+  },
+  "BRANCH OF": {
+    "verb": "BRANCH",
+    "object": "EMPTY",
+    "qualifier": ""
+  },
+  "CONNECTED TO": {
+    "verb": "CONNECT",
+    "object": "EMPTY",
+    "qualifier": ""
+  },
+  "USES AS RESOURCE": {
+    "verb": "USE",
+    "object": "RESOURCE",
+    "qualifier": ""
+  },
+  "ALLOCAZIONE OTTIMALE": {
+    "verb": "OPTIMIZE",
+    "object": "",
+    "qualifier": ""
+  },
+  "ESPORTAZIONI": {
+    "verb": "EXPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "IMPONGONO SU": {
+    "verb": "IMPOSE",
+    "object": "",
+    "qualifier": "ON"
+  },
+  "IMPORTAZIONI": {
+    "verb": "IMPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "INFLUENZANO DIRETTAMENTE": {
+    "verb": "AFFECT",
+    "object": "",
+    "qualifier": "DIRECTLY"
+  },
+  "SI OCCUPA DI": {
+    "verb": "HANDLE",
+    "object": "",
+    "qualifier": ""
+  },
+  "SIGNIFICANO": {
+    "verb": "MEAN",
+    "object": "",
+    "qualifier": ""
+  },
+  "STIMOLANO": {
+    "verb": "STIMULATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "DECIDE DI": {
+    "verb": "DECIDE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "DEVE DECIDERE SE": {
+    "verb": "DECIDE",
+    "object": "STATEMENT",
+    "qualifier": "SE"
+  },
+  "INFLUENZANO PROFONDAMENTE": {
+    "verb": "INFLUENCE",
+    "object": "",
+    "qualifier": "PROFONDAMENTE"
+  },
+  "LEGATO A": {
+    "verb": "CONNECT",
+    "object": "",
+    "qualifier": "A"
+  },
+  "RIGUARDA COME OTTENERE": {
+    "verb": "CONSIDER",
+    "object": "METHOD",
+    "qualifier": "COME OTTENERE"
+  },
+  "SI DIVIDE IN": {
+    "verb": "DIVIDE",
+    "object": "PARTS",
+    "qualifier": "IN"
+  },
+  "STRUMENTO PER": {
+    "verb": "PURPOSE",
+    "object": "",
+    "qualifier": "PER"
+  },
+  "ACQUISTO CON": {
+    "verb": "BUY",
+    "object": "GOODS",
+    "qualifier": "CON"
+  },
+  "DIFFERENTE DA": {
+    "verb": "DIFFER",
+    "object": "",
+    "qualifier": "DA"
+  },
+  "PAGAMENTO DI": {
+    "verb": "PAY",
+    "object": "AMOUNT",
+    "qualifier": ""
+  },
+  "RICEZIONE IN CAMBIO DI": {
+    "verb": "RECEIVE",
+    "object": "GOODS",
+    "qualifier": "IN CAMBIO DI"
+  },
+  "È LA BASE DI": {
+    "verb": "BE_BASE",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "IMPROVED_BY": {
+    "verb": "IMPROVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "ORIGIN_OF": {
+    "verb": "ORIGINATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROBLEM_FOR": {
+    "verb": "CAUSE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CAUSED THE ABANDONMENT OF": {
+    "verb": "CAUSE",
+    "object": "ABANDONMENT",
+    "qualifier": ""
+  },
+  "DETERMINES THE VALUE OF": {
+    "verb": "DETERMINE",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "EXCHANGED AT": {
+    "verb": "EXCHANGE",
+    "object": "",
+    "qualifier": ""
+  },
+  "APPROVATOCOSTITUZIONE": {
+    "verb": "APPROVE",
+    "object": "CONSTITUTION",
+    "qualifier": ""
+  },
+  "AUMENTÒ": {
+    "verb": "INCREASE",
+    "object": "",
+    "qualifier": ""
+  },
+  "DEFINÌIL": {
+    "verb": "DEFINE",
+    "object": "IT",
+    "qualifier": ""
+  },
+  "ESEMPIODI": {
+    "verb": "GIVE",
+    "object": "EXAMPLES",
+    "qualifier": ""
+  },
+  "FUDECISOIN": {
+    "verb": "DECIDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FULAPRIMA": {
+    "verb": "FULFILL",
+    "object": "FIRST",
+    "qualifier": ""
+  },
+  "FURITIVATO": {
+    "verb": "FLEE",
+    "object": "",
+    "qualifier": ""
+  },
+  "NECESSITAVADIMAGGIORIQUANTITÀPERSOSTENERELACRESCITA": {
+    "verb": "NEED",
+    "object": "QUANTITY",
+    "qualifier": "PEOPLE TO SUSTAIN GROWTH"
+  },
+  "NONCRESCEVANODIPARIPASSOCON": {
+    "verb": "GROW",
+    "object": "",
+    "qualifier": "FROM SIMILAR ASSOCIATION"
+  },
+  "NONERAPIÙLEGATOA": {
+    "verb": "LINK",
+    "object": "",
+    "qualifier": ""
+  },
+  "REVOCÒ": {
+    "verb": "REVOKE",
+    "object": "",
+    "qualifier": ""
+  },
+  "ÈILSISTEMAINCUIVIVIAMOOGGI": {
+    "verb": "LIVE",
+    "object": "SYSTEM",
+    "qualifier": ""
+  },
+  "ACCETTAZIONE DI DENARO IN CAMBIO DI BENI E SERVIZI": {
+    "verb": "EXCHANGE",
+    "object": "GOODS_SERVICES",
+    "qualifier": ""
+  },
+  "CREAZIONE PRINCIPALMENTE ATTRAVERSO": {
+    "verb": "CREATE",
+    "object": "",
+    "qualifier": "THROUGH"
+  },
+  "CREDIBILITÀ SUPPORTATA DA": {
+    "verb": "SUPPORT",
+    "object": "CREDIBILITY",
+    "qualifier": ""
+  },
+  "DETERMINATO DA": {
+    "verb": "DETERMINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "INFLUENZATI DA": {
+    "verb": "INFLUENCIA",
+    "object": "",
+    "qualifier": ""
+  },
+  "INFLUENZATO DALL'EQUILIBRIO TRA": {
+    "verb": "INFLUENCE",
+    "object": "",
+    "qualifier": "BALANCE"
+  },
+  "PUÒ SEMPLICEMENTE STAMPARE DENARO OPPURE CREARE RISERVE": {
+    "verb": "PRINT",
+    "object": "MONEY",
+    "qualifier": ""
+  },
+  "SUPPORTATO DA": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "ACQUISTA TITOLI DI STATO": {
+    "verb": "PURCHASE",
+    "object": "SECURITIES",
+    "qualifier": ""
+  },
+  "PRESTA DENARO": {
+    "verb": "LEND",
+    "object": "MONEY",
+    "qualifier": ""
+  },
+  "CAN BE IN FORM OF": {
+    "verb": "TAKE",
+    "object": "FORM",
+    "qualifier": ""
+  },
+  "CAN CONTRIBUTE TO": {
+    "verb": "CONTRIBUTE",
+    "object": "CAUSE",
+    "qualifier": ""
+  },
+  "LOWERED": {
+    "verb": "REDUCE",
+    "object": "AMOUNT",
+    "qualifier": ""
+  },
+  "PROVIDED TO": {
+    "verb": "PROVIDE",
+    "object": "RESOURCE",
+    "qualifier": ""
+  },
+  "PURCHASED BONDS OF": {
+    "verb": "PURCHASE",
+    "object": "BONDS",
+    "qualifier": ""
+  },
+  "ATTUATORE": {
+    "verb": "IMPLEMENT",
+    "object": "",
+    "qualifier": ""
+  },
+  "FORNITORE_DI_SERVIZI": {
+    "verb": "PROVIDE",
+    "object": "SERVICES",
+    "qualifier": ""
+  },
+  "TIPOLOGIA": {
+    "verb": "DEFINE",
+    "object": "TYPE",
     "qualifier": ""
   }
 }

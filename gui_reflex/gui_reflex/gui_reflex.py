@@ -352,7 +352,6 @@ def detect_intent(query: str) -> str:
 
 
 
-
 def extract_requested_pages(query: str):
     import re
     if not query:
@@ -622,11 +621,19 @@ def get_neighbor_chunk_ids(chunk_ids: List[str], limit: int = GRAPH_MAX_NEIGHBOR
     if not chunk_ids or not neo4j_driver:
         return []
     # Nuova query: trova chunk che condividono le STESSE entità dei chunk trovati da Qdrant
+    # FIX ANTI-RUMORE: Richiede correlazione forte (minimo 2 entità in comune)
+    # o esclude entità troppo generiche (Type='Entity' generico)
     query = """
     MATCH (c1:Chunk)<-[:MENTIONED_IN]-(e:Entity)-[:MENTIONED_IN]->(c2:Chunk)
-    WHERE c1.id IN $ids AND NOT c2.id IN $ids
-    RETURN c2.id AS cid, count(e) AS common_entities
-    ORDER BY common_entities DESC
+    WHERE c1.id IN $ids 
+      AND NOT c2.id IN $ids
+      AND NOT e.type IN ['Generic', 'Year', 'Date'] -- Filtro Stop-Nodes opzionale
+    
+    WITH c2, count(DISTINCT e) as strength, collect(e.label) as overlaps
+    WHERE strength >= 2  -- <--- FILTRO CRITICO: Almeno 2 concetti in comune
+    
+    RETURN c2.id AS cid
+    ORDER BY strength DESC
     LIMIT $lim
     """
     out = []
@@ -911,6 +918,38 @@ def fetch_pg_chunks_by_doc_and_index(pairs: List[Tuple[str, int]]) -> Dict[Tuple
     finally:
         pg_pool.putconn(conn)
 
+def apply_rrf_scoring(candidates: List[Dict[str, Any]], k: int = 60):
+    """
+    Applica Reciprocal Rank Fusion (RRF) direttamente alla lista di candidati.
+    Modifica la lista in-place.
+    """
+    # 1. Inizializzazione sicura: assicuriamoci che tutti abbiano il campo rrf_score
+    for c in candidates:
+        c["rrf_score"] = 0.0
+
+    # 2. RRF su Vettori (Qdrant)
+    # Creiamo una lista temporanea ordinata per score vettoriale
+    vec_sorted = sorted(
+        [c for c in candidates if c.get("score_vec", 0) > 0], 
+        key=lambda x: x["score_vec"], 
+        reverse=True
+    )
+    
+    # Assegniamo i punti basati sul rango
+    for rank, item in enumerate(vec_sorted):
+        # item è un riferimento al dizionario originale, quindi la modifica è persistente
+        item["rrf_score"] += (1.0 / (k + rank + 1))
+
+    # 3. RRF su Keyword (BM25 Postgres)
+    bm25_sorted = sorted(
+        [c for c in candidates if c.get("score_bm25", 0) > 0], 
+        key=lambda x: x["score_bm25"], 
+        reverse=True
+    )
+    
+    for rank, item in enumerate(bm25_sorted):
+        item["rrf_score"] += (1.0 / (k + rank + 1))
+
 def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     """
     Versione Hybrid: Esegue ricerca parallela su Qdrant (vettoriale) e Postgres (BM25),
@@ -1009,12 +1048,33 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
         return [], "Nessun risultato trovato nelle basi dati."
 
     # 5) Scoring Iniziale + Tier Boost
-    for c in candidates:
-        # Applica il boost/penalty in base al Tier definito nelle config
-        boost = float(tier_score_delta(c["tier"], query_text))
-        # Score base per l'ordinamento pre-rerank (media pesata o semplice somma)
-        c["base_score"] = c["score_vec"] + (c["score_bm25"] * 0.1) + boost
+# ... (il codice precedente dentro retrieve_v2 resta uguale fino alla creazione della lista 'candidates') ...
+    
+    candidates = list(candidates_dict.values())
+    if not candidates:
+        return [], "Nessun risultato trovato nelle basi dati."
 
+    # ---------------------------------------------------------
+    # 5) SCORING IBRIDO (RRF) + TIER BOOST [FIX NUOVO]
+    # ---------------------------------------------------------
+    
+    # Calcola 'rrf_score' per tutti usando la funzione sicura
+    apply_rrf_scoring(candidates) 
+
+    for c in candidates:
+        # Recupera lo score RRF appena calcolato (sarà basso, es. 0.03)
+        base_rrf = c.get("rrf_score", 0.0)
+        
+        # Calcola il Boost del Tier (es. +0.08 per Tier A)
+        # Usiamo .get() per sicurezza se la chiave 'tier' mancasse
+        boost = float(tier_score_delta(c.get("tier", ""), query_text))
+        
+        # Formula Finale Pre-Rerank: RRF + Boost
+        # Nota: Non moltiplichiamo il boost perché RRF produce numeri piccoli, 
+        # quindi il Tier Boost ha un impatto molto forte (come desiderato).
+        c["base_score"] = base_rrf + boost
+
+    # ---------------------------------------------------------
     # 6) RERANKING (Cross-Encoder)
     # Il reranker valuta la pertinenza reale tra domanda e testo, indipendentemente dal DB di origine
     if reranker is not None and candidates:
@@ -1156,8 +1216,19 @@ def build_system_instructions(intent: str) -> str:
         - Do not complain about partial data unless the info is missing from ALL chunks.
 
         OUTPUT STRUCTURE:
+        You MUST structure your response in two parts.
+        
+        PART 1: INTERNAL REASONING (Hidden from user, but crucial)
+        Enclose this in <reasoning> tags.
+        1. Analyze User Intent: Definition vs Calculation vs Lookup.
+        2. Verify Tiers: Do I have Tier A chunks? If yes, prioritize them over Tier B/C.
+        3. Check Conflicts: Does News (Tier C) contradict Methodology (Tier A)?
+        4. Plan Citations: Ensure every assertion has a [Source ID].
+        </reasoning>
+
+        PART 2: FINAL RESPONSE (Visible to user)
         **A) Risposta**
-        - Direct answer.
+        - Direct, technical answer in the USER'S LANGUAGE.
         - If the user asks about a table, include a reconstructed Markdown table.
 
         **B) Evidenze**
