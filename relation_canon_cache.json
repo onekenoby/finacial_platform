@@ -29208,5 +29208,10 @@
     "verb": "DEFINE",
     "object": "TYPE",
     "qualifier": ""
+  },
+  "DIVIDED BY": {
+    "verb": "DIVIDE",
+    "object": "",
+    "qualifier": "BY"
   }
 }

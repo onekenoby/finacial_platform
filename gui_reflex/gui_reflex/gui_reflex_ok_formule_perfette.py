@@ -811,46 +811,36 @@ def fetch_pg_chunks_by_uuid(chunk_uuids: List[str]) -> Dict[str, Dict[str, Any]]
 
 
 def search_pg_bm25(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
-    if not PG_ENRICH_ENABLED or not pg_pool:
-        return []
-    if not query_text.strip():
-        return []
+    if not PG_ENRICH_ENABLED or not pg_pool: return []
+    if not query_text.strip(): return []
 
-    # ✅ Versione ottimizzata: usa colonna tsv (pre-calcolata) + indice GIN
-    # Richiede: ALTER TABLE ... ADD COLUMN tsv; CREATE INDEX GIN(tsv)
+    # Usiamo websearch_to_tsquery che è il più robusto (gestisce "virgolette", OR, ecc.)
     sql = """
-    SELECT
-        chunk_uuid::text,
-        content_raw,
-        content_semantic,
-        metadata_json,
+    SELECT chunk_uuid::text, content_raw, content_semantic, metadata_json,
         ts_rank_cd(
-            tsv,
+            to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')), 
             websearch_to_tsquery('simple', %s)
         ) AS rank
     FROM public.document_chunks
-    WHERE tsv @@ websearch_to_tsquery('simple', %s)
-    ORDER BY rank DESC
-    LIMIT %s;
+    WHERE 
+        to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')) 
+        @@ websearch_to_tsquery('simple', %s)
+    ORDER BY rank DESC LIMIT %s;
     """
-
+    
     conn = pg_pool.getconn()
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (query_text, query_text, limit))
             rows = cur.fetchall()
             return [{
-                "id": r[0],
-                "content": r[2] or r[1],
-                "metadata": r[3] or {},
-                "score": float(r[4])
+                "id": r[0], "content": r[2] or r[1], "metadata": r[3] or {}, "score": float(r[4])
             } for r in rows]
     except Exception as e:
         print(f"⚠️ BM25 Error: {e}")
         return []
     finally:
         pg_pool.putconn(conn)
-
 
 # =========================
 # 🔍 RAG v2 Retrieval
@@ -967,39 +957,22 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     counts: Dict[str, Any] = {}
     intent = detect_intent(query_text)
 
-
-    # 1) Embedding (più leggero: no_grad + conversione controllata)
+    # 1) Embedding
     t0 = time.time()
-    with torch.no_grad():
-        qv = embedder.encode(query_text, normalize_embeddings=True)
-
-    # qv può essere np.ndarray o list-like: convertiamo solo se serve
-    query_vector = qv.tolist() if hasattr(qv, "tolist") else list(qv)
-
+    query_vector = embedder.encode(query_text, normalize_embeddings=True).tolist()
     timings["embed"] = time.time() - t0
-
 
     # 2) Qdrant (Vettoriale)
     t0 = time.time()
     hits = []
     try:
         # Prendiamo pochi candidati ma buoni
-        # ✅ usa knob configurabili + scarica solo le chiavi necessarie (meno rete/CPU)
         hits = qdrant_client_inst.search(
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
-            limit=QDRANT_CANDIDATES,
-            with_payload=models.PayloadSelectorInclude(
-                include=[
-                    "filename", "page", "page_no", "toon_type", "type",
-                    "tier", "section_hint",
-                    # testo: prendi solo uno tra text_sem/content_semantic/content_raw a seconda di ingestion
-                    "text_sem", "content_semantic", "content_raw", "content", "text",
-                    "image_id",
-                ]
-            ),
+            limit=20, 
+            with_payload=True,
         )
-
         counts["qdrant_hits"] = len(hits)
         print(f"🌌 Qdrant ha trovato {len(hits)} chunk.")
     except Exception as e:
@@ -1057,63 +1030,54 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
         print("❌ NESSUN CANDIDATO TROVATO!")
         return [], "Nessun risultato."
 
-    # 5) SCORING INTELLIGENTE & FILENAME BOOST (versione stabile)
-    # Prepariamo token query (parole > 4 lettere) e limitiamo a pochi token "forti"
+    # 5) SCORING INTELLIGENTE & FILENAME FORCING
+    # Prepariamo i token della query (parole > 4 lettere)
     query_tokens = [w.lower() for w in query_text.split() if len(w) > 4]
-    # prendiamo i 2 token più lunghi: spesso sono i più discriminanti
-    query_tokens = sorted(set(query_tokens), key=len, reverse=True)[:2]
-
     print(f"🎯 Target Tokens (Filename Match): {query_tokens}")
 
     for c in candidates:
-        fname_lower = (c.get("filename") or "").lower()
-
-        # ✅ Boost graduato, NON +500:
-        # - match 1 token: +0.10
-        # - match 2 token: +0.20
-        hits_fname = 0
+        fname_lower = c["filename"].lower()
+        
+        # LOGICA BRUTALE: +500 Punti se il filename contiene una parola della query
+        boost = 0.0
+        
+        # Match esatto parziale (es. "formulae" in "Formulae_Table.pdf")
         for token in query_tokens:
-            if token and token in fname_lower:
-                hits_fname += 1
+            if token in fname_lower:
+                boost += 500.0  # SUPER BOOST
+                c["origin"] += " [TARGET FILE]"
+                print(f"   🚀 BOOST ATTIVATO per {c['filename']} (Match: {token})")
+                break
+        
+        # Assegniamo score finale temporaneo
+        c["final_score"] = c.get("score_base", 0.0) + boost
 
-        boost = 0.10 * hits_fname
-
-        if hits_fname > 0:
-            c["origin"] += " [FNAME_MATCH]"
-            print(f"   🚀 Filename boost per {c.get('filename')} (hits={hits_fname})")
-
-        # Score base + piccolo boost (non distorce tutto)
-        c["final_score"] = float(c.get("score_base", 0.0)) + boost
-
-
-   
-    # 6) RERANKING SELETTIVO (versione veloce + robusta)
-    # Rerankiamo solo i top-N per final_score (pre-score), così limitiamo CPU
-    others = sorted(candidates, key=lambda x: float(x.get("final_score", 0.0)), reverse=True)
-    top_others = others[:RERANK_CANDIDATES]  # usa env var già presente
-
-    def _rerank_text(s: str, max_chars: int = 1000) -> str:
-        s = (s or "").strip()
-        return s if len(s) <= max_chars else s[:max_chars]
-
+    # 6) RERANKING SELETTIVO
+    # Mandiamo al reranker SOLO chi non ha già vinto per filename match
+    # Questo salva un sacco di tempo e previene che il reranker abbassi il target
+    
+    # Separiamo i "Vincitori sicuri" (Target File) dagli altri
+    winners = [c for c in candidates if c["final_score"] > 400]
+    others = [c for c in candidates if c["final_score"] <= 400]
+    
+    # Rerankiamo solo gli "others" (i top 15)
+    others.sort(key=lambda x: x["final_score"], reverse=True)
+    top_others = others[:15]
+    
     if reranker and top_others:
         t0 = time.time()
-        pairs = [(query_text, _rerank_text(c.get("content", ""))) for c in top_others]
+        pairs = [(query_text, c["content"]) for c in top_others]
         try:
             scores = reranker.predict(pairs)
             for i, score in enumerate(scores):
-                top_others[i]["final_score"] = float(score)
+                top_others[i]["final_score"] = float(score) # Score normale del reranker
         except Exception as e:
             print(f"⚠️ Reranker Error: {e}")
         timings["rerank"] = time.time() - t0
-
-    # Pool finale = rerankati (top) + resto non rerankato
-    final_pool = top_others + others[RERANK_CANDIDATES:]
-    final_pool.sort(key=lambda x: float(x.get("final_score", 0.0)), reverse=True)
-
     
-    
-    
+    # Riuniamo tutto: Vincitori (Score 500+) + Altri Rerankati
+    final_pool = winners + top_others
+    final_pool.sort(key=lambda x: x["final_score"], reverse=True)
     
     # 7) Selezione Finale (DIVERSIFY)
     # Riduciamo a 5 fonti massime per evitare blocchi LLM
