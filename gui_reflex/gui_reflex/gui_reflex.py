@@ -822,15 +822,31 @@ def search_pg_bm25(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
     
     if not ts_query: return []
 
+    # ---------------------------------------------------------
+    # FIX METADATI: Cerca sia nel testo semantico che nel JSON
+    # ---------------------------------------------------------
+    # 1. Concateniamo content_semantic con il testo del JSON (metadata_json::text)
+    # 2. Usiamo COALESCE per evitare crash se un campo è NULL
+    # 3. Cerchiamo la corrispondenza (@@) e calcoliamo il rank
+    
     sql = """
     SELECT 
-        chunk_uuid::text, content_raw, content_semantic, metadata_json,
-        ts_rank_cd(to_tsvector('italian', content_semantic), to_tsquery('italian', %s)) AS rank
+        chunk_uuid::text, 
+        content_raw, 
+        content_semantic, 
+        metadata_json,
+        ts_rank_cd(
+            to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')), 
+            to_tsquery('simple', %s)
+        ) AS rank
     FROM public.document_chunks
-    WHERE to_tsvector('italian', content_semantic) @@ to_tsquery('italian', %s)
+    WHERE 
+        to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')) 
+        @@ to_tsquery('simple', %s)
     ORDER BY rank DESC
     LIMIT %s;
     """
+    
     conn = pg_pool.getconn()
     try:
         with conn.cursor() as cur:
