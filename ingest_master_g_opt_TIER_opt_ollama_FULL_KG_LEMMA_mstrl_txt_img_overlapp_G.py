@@ -464,45 +464,6 @@ _KG_GK_CACHE = {}
 _KG_GK_CACHE_MAX = 50000
 _PROPER_NOUN_FAST = re.compile(r"\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})*\b")
 
-'''
-# def con keywords
-def ai_gatekeeper_decision(text: str) -> bool:
-    """
-    Gatekeeper ultra-rapido: niente LLM.
-    Decide se vale la pena tentare KG su base euristica (keyword + densità).
-    """
-    if not text:
-        return False
-
-    # cache su head del testo per evitare calcoli ripetuti
-    key = text[:700]
-    cached = _KG_GK_CACHE.get(key)
-    if cached is not None:
-        return cached
-
-    t = safe_normalize_text(text)
-
-    # troppo corto => niente KG
-    if len(t) < KG_MIN_LEN:
-        res = False
-    else:
-        kws = set(_KG_PAT.findall(t))
-        has_numbers = any(ch.isdigit() for ch in t)
-        has_proper = bool(_PROPER_NOUN_FAST.search(t))
-
-        # Regole conservative:
-        # - almeno 2 keyword e (numero o nome proprio) => sì
-        # - oppure >=4 keyword => sì
-        if (len(kws) >= 2 and (has_numbers or has_proper)) or (len(kws) >= 4):
-            res = True
-        else:
-            res = False
-
-    if len(_KG_GK_CACHE) >= _KG_GK_CACHE_MAX:
-        _KG_GK_CACHE.clear()
-    _KG_GK_CACHE[key] = res
-    return res
-'''
 
 # def con pytorch
 def ai_gatekeeper_decision(text: str) -> bool:
@@ -541,7 +502,43 @@ def ai_gatekeeper_decision(text: str) -> bool:
        print(f"   [GK] Score: {max_score:.3f} | Text: {text[:50]}...")
 
     return max_score >= THRESHOLD
-    
+
+
+def ai_gatekeeper_decision_from_vec(vec, threshold: float = 0.38) -> bool:
+    """
+    Gatekeeper Semantico (V2) ma usando un embedding già calcolato (NO re-encode).
+    vec: np.ndarray | list[float] | torch.Tensor
+    """
+    global _GK_ANCHOR_EMBEDDINGS
+
+    if vec is None:
+        return False
+
+    embedder = get_embedder()
+
+    # Lazy init ancore (una sola volta)
+    if _GK_ANCHOR_EMBEDDINGS is None:
+        _GK_ANCHOR_EMBEDDINGS = embedder.encode(GATEKEEPER_CONCEPTS, convert_to_tensor=True)
+
+    # vec -> torch tensor (1, dim)
+    if not isinstance(vec, torch.Tensor):
+        vec_t = torch.tensor(vec, dtype=torch.float32)
+    else:
+        vec_t = vec.float()
+
+    if vec_t.dim() == 1:
+        vec_t = vec_t.unsqueeze(0)
+
+    scores = util.cos_sim(vec_t, _GK_ANCHOR_EMBEDDINGS)
+    max_score = float(torch.max(scores))
+
+    if max_score > 0.3:
+        print(f"   [GK] Score(vec): {max_score:.3f}")
+
+    return max_score >= threshold
+
+
+
 #---------------------
 
 # Compilazione Regex per KG_KEYWORDS (massima efficienza)
@@ -3690,15 +3687,17 @@ def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
                     hq_bytes = render_full_page_png(page_obj, dpi=180) 
                     
                     # Svuotiamo la VRAM prima del task pesante
-                    if VISION_MODEL_NAME: force_unload_ollama(VISION_MODEL_NAME)
+                    #if VISION_MODEL_NAME: force_unload_ollama(VISION_MODEL_NAME)
 
-                    # Chiediamo all'LLM di trascrivere (Sostituzione Totale)
+                    # ✅ NON fare unload qui: costa moltissimo e spesso peggiora la latenza.
+                    # Manteniamo il modello caldo durante l'intero documento.
                     vision_md = llm_chat_multimodal(
                         prompt=MARKER_VISION_PROMPT,
                         image_bytes=hq_bytes,
-                        model=VISION_MODEL_NAME, 
-                        max_tokens=3500 # Abbondante per pagine dense
+                        model=VISION_MODEL_NAME,
+                        max_tokens=3500
                     )
+
                     
                     if len(vision_md) > 50:
                         clean_text = vision_md 
@@ -3840,6 +3839,10 @@ def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
     finally:
         if doc: doc.close()
 
+        # ✅ Unload una sola volta a fine documento (opzionale)
+        if PDF_VISION_ENABLED and VISION_MODEL_NAME:
+            force_unload_ollama(VISION_MODEL_NAME)
+
     return final_chunks
 
 
@@ -3980,10 +3983,12 @@ def extract_pdf_as_markdown_assets(file_path: str, log_id: int) -> List[Dict[str
                             print(f"   ⚠️ Err. Img {img_index} pg {page_no}: {e_img}")
                             continue
 
-            # VRAM safety (come avevi già pensato)
-            if PDF_VISION_ENABLED and VISION_MODEL_NAME:
-                force_unload_ollama(VISION_MODEL_NAME)
+
+            # ✅ VRAM safety: no unload per pagina (troppo costoso).
+            # Se serve, lasciamo solo una GC leggera.
+            if PDF_VISION_ENABLED:
                 gc.collect()
+
 
         except Exception as e_page:
             print(f"   ⚠️ Err. Pagina {page_no}: {e_page}")
@@ -4212,9 +4217,6 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
             pass
         return
 
-    # 2. Iniezione metadati
-    # 2. Iniezione metadati e normalizzazione tipo
-    # ... dopo l'estrazione dei chunk ...
     
     # 2. Iniezione metadati e normalizzazione tipo
     for idx, ch in enumerate(chunks):
@@ -4247,6 +4249,7 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
     # LOG SINGOLO (Prima ne avevi due)
     print(f"   🚀 Inizio elaborazione: {num_chunks_totali} chunks (Batch: {EMBED_BATCH_SIZE})")
 
+
     # 3. Ciclo Batches
     for i in range(0, num_chunks_totali, EMBED_BATCH_SIZE):
         batch_t0 = time.time()
@@ -4272,15 +4275,30 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
             pages_map = {}
             for local_j, ch in enumerate(batch):
                 p = int(ch.get("page_no") or 1)
-                pages_map.setdefault(p, []).append((i + local_j, ch))
+                # salviamo anche l'indice locale nel batch, così riusiamo vecs[local_j]
+                pages_map.setdefault(p, []).append((i + local_j, local_j, ch))
+
+            # Convertiamo i vecs del batch una volta sola in torch (utile per mean/max)
+            try:
+                vecs_t = torch.tensor(vecs, dtype=torch.float32)
+            except Exception:
+                vecs_t = None
 
             futures_kg = {}
             for p_no, indexed_chunks in pages_map.items():
-                combined_text = "\n".join([ch.get("text_sem", "") for _, ch in indexed_chunks])
+                combined_text = "\n".join([ch.get("text_sem", "") for _, _, ch in indexed_chunks])
                 text_clean = safe_normalize_text(combined_text)[:KG_TEXT_MAX_CHARS]
-                
-                # Gatekeeper per non sprecare tempo su pagine vuote
-                if ai_gatekeeper_decision(text_clean):
+
+                # ✅ Gatekeeper su embedding già calcolato (media dei chunk della pagina)
+                if vecs_t is not None:
+                    local_idxs = [local_j for _, local_j, _ in indexed_chunks]
+                    page_vec = vecs_t[local_idxs].mean(dim=0)
+                    ok_kg = ai_gatekeeper_decision_from_vec(page_vec)
+                else:
+                    # fallback (non dovrebbe quasi mai servire)
+                    ok_kg = ai_gatekeeper_decision(text_clean)
+
+                if ok_kg:
                     futures_kg[p_no] = kg_executor.submit(
                         llm_extract_kg, filename, p_no, text_clean, LLM_MODEL_NAME
                     )
@@ -4340,18 +4358,25 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
             })
             total_chunks += 1
 
-        # 4. Flush Batches (Scrittura su DB)
-        flush_postgres_chunks_batch(pg_rows)
-        try:
-            pts = [models.PointStruct(id=p["id"], vector=p["vector"], payload=p["payload"]) for p in qdrant_points]
-            qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=pts)
-        except Exception as e:
-            print(f"   ⚠️ Qdrant Error: {e}")
-        
-        flush_neo4j_rows_batch(neo4j_rows)
+        # 4. Flush "intelligente" (meno roundtrip, stessa modalità di scrittura)
+        must_flush = (len(pg_rows) >= DB_FLUSH_SIZE) or (i + len(batch) >= num_chunks_totali)
 
-        # Reset buffers
-        pg_rows.clear(); qdrant_points.clear(); neo4j_rows.clear()
+        if must_flush:
+            flush_postgres_chunks_batch(pg_rows)
+
+            try:
+                pts = [models.PointStruct(id=p["id"], vector=p["vector"], payload=p["payload"]) for p in qdrant_points]
+                qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=pts)
+            except Exception as e:
+                print(f"   ⚠️ Qdrant Error: {e}")
+
+            flush_neo4j_rows_batch(neo4j_rows)
+
+            # Reset buffers (solo dopo flush)
+            pg_rows.clear()
+            qdrant_points.clear()
+            neo4j_rows.clear()
+
         
         # Log Avanzamento
         percentuale = min(100, int((i + len(batch)) / num_chunks_totali * 100))

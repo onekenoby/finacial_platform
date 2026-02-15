@@ -92,11 +92,11 @@ LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
 MEMORY_LIMIT = int(os.getenv("MEMORY_LIMIT", "6"))  # number of turns (user+assistant)
 
 # Retrieval knobs (RAG v2)
-QDRANT_CANDIDATES = int(os.getenv("QDRANT_CANDIDATES", "80"))     # retrieve top-N from qdrant
-RERANK_CANDIDATES = int(os.getenv("RERANK_CANDIDATES", "40"))     # Aumentato per catturare più sfumature
-FINAL_SOURCES = int(os.getenv("FINAL_SOURCES", "15"))             # Aumentato per dare più contesto
-MAX_PER_PAGE = int(os.getenv("MAX_PER_PAGE", "3"))                # ✅ FONDAMENTALE: Consente più chunk per la stessa pagina
-MAX_PER_DOC = int(os.getenv("MAX_PER_DOC", "8"))                  # ✅ FONDAMENTALE: Consente Deep-Dive su un singolo documento
+QDRANT_CANDIDATES = int(os.getenv("QDRANT_CANDIDATES", "20"))     # retrieve top-N from qdrant
+RERANK_CANDIDATES = int(os.getenv("RERANK_CANDIDATES", "15"))     # Aumentato per catturare più sfumature
+FINAL_SOURCES = int(os.getenv("FINAL_SOURCES", "6"))             # Aumentato per dare più contesto
+MAX_PER_PAGE = int(os.getenv("MAX_PER_PAGE", "2"))                # ✅ FONDAMENTALE: Consente più chunk per la stessa pagina
+MAX_PER_DOC = int(os.getenv("MAX_PER_DOC", "3"))                  # ✅ FONDAMENTALE: Consente Deep-Dive su un singolo documento
 
 # =========================
 # 🎚️ Tier-aware ranking
@@ -115,7 +115,7 @@ GRAPH_MAX_FORMULAS = int(os.getenv("GRAPH_MAX_FORMULAS", "6"))
 GRAPH_MAX_NEIGHBOR_CHUNKS = int(os.getenv("GRAPH_MAX_NEIGHBOR_CHUNKS", "4"))
 
 # Prompt limits
-MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", "24000"))  # prevent prompt blow-ups
+MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", "14000"))  # prevent prompt blow-ups
 MAX_ASSISTANT_CHARS = int(os.getenv("MAX_ASSISTANT_CHARS", "12000"))
 
 AUDIT_ENABLED = True
@@ -811,61 +811,36 @@ def fetch_pg_chunks_by_uuid(chunk_uuids: List[str]) -> Dict[str, Dict[str, Any]]
 
 
 def search_pg_bm25(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
-    """Ricerca testuale esatta (BM25) su Postgres."""
-    if not PG_ENRICH_ENABLED or not pg_pool:
-        return []
+    if not PG_ENRICH_ENABLED or not pg_pool: return []
+    if not query_text.strip(): return []
 
-    # Pulizia minima: rimuoviamo caratteri speciali per evitare errori in to_tsquery
-    clean_q = re.sub(r'[^\w\s]', ' ', query_text).strip()
-    # Trasformiamo la query in formato "parola1 & parola2" (AND logico)
-    ts_query = " & ".join(clean_q.split())
-    
-    if not ts_query: return []
-
-    # ---------------------------------------------------------
-    # FIX METADATI: Cerca sia nel testo semantico che nel JSON
-    # ---------------------------------------------------------
-    # 1. Concateniamo content_semantic con il testo del JSON (metadata_json::text)
-    # 2. Usiamo COALESCE per evitare crash se un campo è NULL
-    # 3. Cerchiamo la corrispondenza (@@) e calcoliamo il rank
-    
+    # Usiamo websearch_to_tsquery che è il più robusto (gestisce "virgolette", OR, ecc.)
     sql = """
-    SELECT 
-        chunk_uuid::text, 
-        content_raw, 
-        content_semantic, 
-        metadata_json,
+    SELECT chunk_uuid::text, content_raw, content_semantic, metadata_json,
         ts_rank_cd(
             to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')), 
-            to_tsquery('simple', %s)
+            websearch_to_tsquery('simple', %s)
         ) AS rank
     FROM public.document_chunks
     WHERE 
         to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')) 
-        @@ to_tsquery('simple', %s)
-    ORDER BY rank DESC
-    LIMIT %s;
+        @@ websearch_to_tsquery('simple', %s)
+    ORDER BY rank DESC LIMIT %s;
     """
     
     conn = pg_pool.getconn()
     try:
         with conn.cursor() as cur:
-            cur.execute(sql, (ts_query, ts_query, limit))
+            cur.execute(sql, (query_text, query_text, limit))
             rows = cur.fetchall()
-        
-        return [{
-            "id": r[0], 
-            "content": r[2] or r[1], # semantic fallback su raw
-            "metadata": r[3] or {},
-            "score": float(r[4])
-        } for r in rows]
+            return [{
+                "id": r[0], "content": r[2] or r[1], "metadata": r[3] or {}, "score": float(r[4])
+            } for r in rows]
     except Exception as e:
-        print(f"⚠️ BM25 Search Error: {e}")
+        print(f"⚠️ BM25 Error: {e}")
         return []
     finally:
         pg_pool.putconn(conn)
-
-
 
 # =========================
 # 🔍 RAG v2 Retrieval
@@ -968,153 +943,155 @@ def apply_rrf_scoring(candidates: List[Dict[str, Any]], k: int = 60):
 
 def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     """
-    Versione Hybrid: Esegue ricerca parallela su Qdrant (vettoriale) e Postgres (BM25),
-    unisce i risultati deduplicandoli e applica il Reranker finale.
+    Retrieval V4: DEBUG ESTREMO + FILENAME FORCING.
     """
+    print(f"\n\n{'='*40}")
+    print(f"🔎 DEBUG RETRIEVAL START")
+    print(f"❓ Query: '{query_text}'")
+    
     if not embedder or not qdrant_client_inst:
-        return [SourceItem(id="error", content="Backend non disponibile", filename="System")], "Backend non disponibile"
+        return [SourceItem(id="error", content="Backend OFF", filename="System")], "Backend OFF"
 
     t_total0 = time.time()
     timings: Dict[str, float] = {}
     counts: Dict[str, Any] = {}
-    intent = detect_intent(query_text) #
+    intent = detect_intent(query_text)
 
-    # 1) Generazione Embedding Query (per Qdrant)
+    # 1) Embedding
     t0 = time.time()
-    query_vector = embedder.encode(query_text, normalize_embeddings=True).tolist() #
+    query_vector = embedder.encode(query_text, normalize_embeddings=True).tolist()
     timings["embed"] = time.time() - t0
 
-    # 2) RICERCA VETTORIALE (QDRANT)
+    # 2) Qdrant (Vettoriale)
     t0 = time.time()
+    hits = []
     try:
-        search_filter = models.Filter(
-            must=[models.FieldCondition(key="tier", match=models.MatchAny(any=["A", "B", "C"]))]
-        )
+        # Prendiamo pochi candidati ma buoni
         hits = qdrant_client_inst.search(
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
-            limit=QDRANT_CANDIDATES,
+            limit=20, 
             with_payload=True,
-            query_filter=search_filter,
-        ) #
+        )
         counts["qdrant_hits"] = len(hits)
+        print(f"🌌 Qdrant ha trovato {len(hits)} chunk.")
     except Exception as e:
         print(f"❌ Qdrant Error: {e}")
-        hits = []
     timings["qdrant_search"] = time.time() - t0
 
-    # 3) RICERCA TESTUALE (POSTGRES BM25) - NEW
+    # 3) Postgres (Keyword)
     t0 = time.time()
-    bm25_hits = search_pg_bm25(query_text, limit=30) 
+    # Usiamo un limite alto per essere sicuri di pescare il file se c'è
+    bm25_hits = search_pg_bm25(query_text, limit=40) 
     counts["bm25_hits"] = len(bm25_hits)
+    print(f"🐘 Postgres ha trovato {len(bm25_hits)} chunk.")
     timings["bm25_search"] = time.time() - t0
 
-    # 4) FUSIONE E DEDUPLICAZIONE (Hybrid Merge)
-    # Usiamo un dizionario keyed su ID per evitare duplicati tra le due ricerche
+    # 4) Unificazione Candidati
     candidates_dict = {}
 
-    # Processa Hits da Qdrant
+    # -- Import Qdrant --
     for hit in hits:
-        payload = hit.payload or {}
         uid = str(hit.id)
-        content = safe_payload_text(payload) #
-        tier = get_payload_tier(payload) #
-        
+        p = hit.payload or {}
+        fname = str(p.get("filename", "Unknown"))
         candidates_dict[uid] = {
             "id": uid,
-            "content": content,
-            "filename": str(payload.get("filename", "Unknown")),
-            "page": get_payload_page(payload), #
-            "type": get_payload_type(payload), #
-            "tier": tier,
-            #"db_origin":t.get("db_origin", "Unknown"),
-            "score_vec": float(hit.score or 0.0),
-            "db_origin": "Qdrant",
-            "score_bm25": 0.0,
-            "section_hint": get_payload_section(payload),
-            "image_id": get_payload_image_id(payload),
+            "content": safe_payload_text(p),
+            "filename": fname,
+            "page": get_payload_page(p),
+            "type": get_payload_type(p),
+            "tier": str(p.get("tier", "C")),
+            "score_base": float(hit.score or 0.0),
+            "origin": "Qdrant",
+            "section_hint": get_payload_section(p)
         }
 
-    # Processa Hits da Postgres BM25
+    # -- Import Postgres --
     for b in bm25_hits:
         uid = b["id"]
-        if uid in candidates_dict:
-            # Se esiste già, aggiorniamo solo lo score BM25 (opzionale per debug)
-            candidates_dict[uid]["score_bm25"] = b["score"]
-            candidates_dict[uid]["db_origin"] = "Hybrid (Vec+Key)" # <--- UPGRADE A IBRIDO
-        else:
-            # Se è un risultato nuovo trovato solo dal testo esatto
-            meta = b.get("metadata", {})
+        meta = b.get("metadata", {})
+        fname = meta.get("filename", "Unknown")
+        if uid not in candidates_dict:
             candidates_dict[uid] = {
                 "id": uid,
                 "content": b["content"],
-                "filename": meta.get("filename", "Unknown"),
-                "page": int(meta.get("page_no") or 1),
+                "filename": fname,
+                "page": int(meta.get("page_no") or 0),
                 "type": meta.get("toon_type", "text"),
                 "tier": meta.get("tier", "C"),
-                "db_origin": "Postgres",
-                "score_vec": 0.0,
-                "score_bm25": b["score"],
-                "section_hint": meta.get("section_hint", ""),
-                "image_id": meta.get("image_id"),
+                "score_base": 0.0, # Verrà aggiornato dopo
+                "origin": "Postgres",
+                "section_hint": meta.get("section_hint", "")
             }
 
     candidates = list(candidates_dict.values())
     if not candidates:
-        return [], "Nessun risultato trovato nelle basi dati."
+        print("❌ NESSUN CANDIDATO TROVATO!")
+        return [], "Nessun risultato."
 
-    # 5) Scoring Iniziale + Tier Boost
-# ... (il codice precedente dentro retrieve_v2 resta uguale fino alla creazione della lista 'candidates') ...
-    
-    candidates = list(candidates_dict.values())
-    if not candidates:
-        return [], "Nessun risultato trovato nelle basi dati."
-
-    # ---------------------------------------------------------
-    # 5) SCORING IBRIDO (RRF) + TIER BOOST [FIX NUOVO]
-    # ---------------------------------------------------------
-    
-    # Calcola 'rrf_score' per tutti usando la funzione sicura
-    apply_rrf_scoring(candidates) 
+    # 5) SCORING INTELLIGENTE & FILENAME FORCING
+    # Prepariamo i token della query (parole > 4 lettere)
+    query_tokens = [w.lower() for w in query_text.split() if len(w) > 4]
+    print(f"🎯 Target Tokens (Filename Match): {query_tokens}")
 
     for c in candidates:
-        # Recupera lo score RRF appena calcolato (sarà basso, es. 0.03)
-        base_rrf = c.get("rrf_score", 0.0)
+        fname_lower = c["filename"].lower()
         
-        # Calcola il Boost del Tier (es. +0.08 per Tier A)
-        # Usiamo .get() per sicurezza se la chiave 'tier' mancasse
-        boost = float(tier_score_delta(c.get("tier", ""), query_text))
+        # LOGICA BRUTALE: +500 Punti se il filename contiene una parola della query
+        boost = 0.0
         
-        # Formula Finale Pre-Rerank: RRF + Boost
-        # Nota: Non moltiplichiamo il boost perché RRF produce numeri piccoli, 
-        # quindi il Tier Boost ha un impatto molto forte (come desiderato).
-        c["base_score"] = base_rrf + boost
+        # Match esatto parziale (es. "formulae" in "Formulae_Table.pdf")
+        for token in query_tokens:
+            if token in fname_lower:
+                boost += 500.0  # SUPER BOOST
+                c["origin"] += " [TARGET FILE]"
+                print(f"   🚀 BOOST ATTIVATO per {c['filename']} (Match: {token})")
+                break
+        
+        # Assegniamo score finale temporaneo
+        c["final_score"] = c.get("score_base", 0.0) + boost
 
-    # ---------------------------------------------------------
-    # 6) RERANKING (Cross-Encoder)
-    # Il reranker valuta la pertinenza reale tra domanda e testo, indipendentemente dal DB di origine
-    if reranker is not None and candidates:
-        t0 = time.time()
-        cross_inputs = [(query_text, c["content"] or "") for c in candidates[:RERANK_CANDIDATES]]
-        if cross_inputs:
-            scores = reranker.predict(cross_inputs)
-            for i in range(len(scores)):
-                candidates[i]["final_score"] = float(scores[i])
-        timings["rerank"] = time.time() - t0
-    else:
-        # Fallback se il reranker è spento
-        for c in candidates: c["final_score"] = c["base_score"]
-
-    # Ordinamento finale per score del Reranker
-    candidates.sort(key=lambda x: x.get("final_score", 0.0), reverse=True)
+    # 6) RERANKING SELETTIVO
+    # Mandiamo al reranker SOLO chi non ha già vinto per filename match
+    # Questo salva un sacco di tempo e previene che il reranker abbassi il target
     
-    # 7) Diversificazione (Max K per pagina/doc)
-    top = diversify(candidates, MAX_PER_PAGE, MAX_PER_DOC, FINAL_SOURCES) #
+    # Separiamo i "Vincitori sicuri" (Target File) dagli altri
+    winners = [c for c in candidates if c["final_score"] > 400]
+    others = [c for c in candidates if c["final_score"] <= 400]
+    
+    # Rerankiamo solo gli "others" (i top 15)
+    others.sort(key=lambda x: x["final_score"], reverse=True)
+    top_others = others[:15]
+    
+    if reranker and top_others:
+        t0 = time.time()
+        pairs = [(query_text, c["content"]) for c in top_others]
+        try:
+            scores = reranker.predict(pairs)
+            for i, score in enumerate(scores):
+                top_others[i]["final_score"] = float(score) # Score normale del reranker
+        except Exception as e:
+            print(f"⚠️ Reranker Error: {e}")
+        timings["rerank"] = time.time() - t0
+    
+    # Riuniamo tutto: Vincitori (Score 500+) + Altri Rerankati
+    final_pool = winners + top_others
+    final_pool.sort(key=lambda x: x["final_score"], reverse=True)
+    
+    # 7) Selezione Finale (DIVERSIFY)
+    # Riduciamo a 5 fonti massime per evitare blocchi LLM
+    final_selection = diversify(final_pool, MAX_PER_PAGE, MAX_PER_DOC, 5)
 
-    # 8) Preparazione SourceItem finali
-    sources: List[SourceItem] = []
-    tier_counts = {}
-    for t in top:
+    print("-" * 20)
+    print("🏆 CLASSIFICA FINALE (Top 3):")
+    for i, s in enumerate(final_selection[:3]):
+        print(f"  {i+1}. {s['filename']} (Score: {s['final_score']:.1f}) - {s['origin']}")
+    print("="*40 + "\n")
+
+    # 8) Output Object Construction
+    sources = []
+    for t in final_selection:
         sources.append(SourceItem(
             id=t["id"], 
             content=t["content"],
@@ -1123,39 +1100,22 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
             type=t["type"],
             score=t.get("final_score", 0.0), 
             tier=t["tier"],
-            db_origin=t.get("db_origin", "Unknown"), 
-            section_hint=t.get("section_hint", ""),
-            image_id=t.get("image_id")
+            db_origin=t.get("origin", "Unknown"), 
+            section_hint=t.get("section_hint", "")
         ))
-        tier_counts[t["tier"]] = tier_counts.get(t["tier"], 0) + 1
-            
-    counts["final_primary"] = len(sources)
-    counts["tier_split"] = tier_counts
 
-    # 9) Graph Expansion (Neo4j) -
+    # Graph (opzionale, teniamolo leggero)
     if GRAPH_EXPAND_ENABLED and neo4j_driver:
-        t0 = time.time()
-        chunk_ids = [s.id for s in sources if s.id and s.id != "error"]
-        formulas = get_formulas_for_chunks(chunk_ids, limit=GRAPH_MAX_FORMULAS)
+        chunk_ids = [s.id for s in sources]
+        formulas = get_formulas_for_chunks(chunk_ids, limit=2) # Solo 2 formule max
         if formulas:
             sources.append(SourceItem(
-                id="graph_formulas", 
-                content="CONTESTO MATEMATICO (Neo4j):\n" + "\n".join(f"- {x}" for x in formulas),
-                filename="Knowledge Graph", 
-                type="graph_formulas",
-                tier="GRAPH"
+                id="graph", 
+                content="Formule collegate:\n" + "\n".join(formulas), 
+                filename="KG", type="formula", tier="GRAPH"
             ))
-            counts["final_formulas"] = len(formulas)
-        timings["graph"] = time.time() - t0
 
-    timings["total"] = time.time() - t_total0
-    
-    # Costruzione Audit Markdown per la UI
-    debug_md = build_retrieval_audit_md(query_text, intent, timings, counts, []) #
-    
-    return sources, debug_md
-
-
+    return sources, build_retrieval_audit_md(query_text, intent, timings, counts, [])
 
 def build_context_block(sources: List[SourceItem], max_chars: int = MAX_CONTEXT_CHARS) -> str:
     """Build context with strong provenance and caps."""
@@ -1510,6 +1470,9 @@ class State(rx.State):
     # ✅ ORA INDENTATO CORRETTAMENTE DENTRO LA CLASSE
 
     async def handle_submit(self):
+        # Import necessario per la gestione asincrona della UI
+        import asyncio 
+
         if not self.input_text.strip() or self.is_processing:
             return
 
@@ -1522,8 +1485,15 @@ class State(rx.State):
 
         try:
             self.refresh_gpu()
+            # 1. Mostra subito il messaggio dell'utente nella chat
             self.messages.append(ChatMessage(id=str(uuid.uuid4()), role="user", content=user_query))
             yield rx.scroll_to("chat_bottom")
+            
+            # --- FIX CRITICO: Pausa per aggiornare la UI ---
+            # Senza questo, l'app sembra bloccata finché il RAG non finisce i calcoli.
+            # 0.1 secondi sono sufficienti a Reflex per renderizzare il messaggio a video.
+            await asyncio.sleep(0.1) 
+            # -----------------------------------------------
 
             intent = detect_intent(user_query)
             analytics_mode = is_user_data_analytics(user_query)
@@ -1543,15 +1513,14 @@ class State(rx.State):
                 final_user_content = f"### QUESTION ###\n{user_query}{language_reminder}"
             else:
                 # 1. RECUPERO DATI (Hybrid Search + Rerank)
+                # Qui avviene il calcolo pesante che prima bloccava tutto
                 sources, debug_md = retrieve_v2(user_query)
                 
-                # 2. RAGGRUPPAMENTO FONTI (HEADER ALLINEATO AL SYSTEM PROMPT)
+                # 2. RAGGRUPPAMENTO FONTI
                 c_a_list, c_b_list, c_c_list, c_g_list = [], [], [], []
 
                 for i, s in enumerate(sources, start=1):
-                    # Header nel formato atteso dal System Prompt (METADATA SENSITIVITY)
                     header = f"--- Fonte [{i}] — {s.filename} — Pag {s.page} — ({s.type}) ---\n"
-                    # Extra metadata utili ma non “distruttivi”
                     meta = f"(tier={s.tier} | db={s.db_origin})\n"
                     body = (s.content or "").strip()
 
@@ -1574,8 +1543,7 @@ class State(rx.State):
                 c_c = "".join(c_c_list).strip()
                 c_g = "".join(c_g_list).strip()
 
-                    
-                # 3. PROMPT DI SISTEMA (Generato QUI ma non incollato all'utente)
+                # 3. PROMPT DI SISTEMA
                 system_instructions = build_system_instructions(intent)
 
                 # Aggiunta audit nel debug visivo
@@ -1586,43 +1554,36 @@ class State(rx.State):
                     f"- Tier C (News): {'✅ Presente' if c_c else '❌ Assente'}"
                 )
 
-                # 4. ASSEMBLAGGIO CONTENUTO UTENTE (Solo Documenti + Domanda)
-                # NOTA: Abbiamo rimosso "### SYSTEM INSTRUCTIONS ###" da qui!
+                # 4. ASSEMBLAGGIO CONTENUTO UTENTE
                 final_user_content = (
                     f"### METHODOLOGY [TIER A] ###\n{c_a if c_a else 'No specific methodology found.'}\n\n"
                     f"### RESEARCH [TIER B] ###\n{c_b if c_b else 'No specific research found.'}\n\n"
                     f"### NEWS & EVENTS [TIER C] ###\n{c_c if c_c else 'No recent news found.'}\n\n"
                     f"### KNOWLEDGE GRAPH [NEO4J] ###\n{c_g if c_g else 'No relational/formula data.'}\n\n"
-                    
                     f"### USER QUESTION ###\n{user_query}\n"
                     f"{language_reminder}"
                 )
             
-            # --- COSTRUZIONE PAYLOAD CHAT (FIXED) ---
-            # Recuperiamo la storia
+            # --- COSTRUZIONE PAYLOAD CHAT ---
             messages_payload = build_alternating_history(self.messages, MEMORY_LIMIT)
             
-            # Rimuove l'ultimo messaggio user (quello raw appena inserito) per sostituirlo con quello arricchito
             if messages_payload and messages_payload[-1]["role"] == "user":
                 messages_payload.pop()
             
-            # Pulisce eventuali messaggi 'system' residui dalla history per evitare duplicati
             messages_payload = [m for m in messages_payload if m["role"] != "system"]
 
-            # COSTRUZIONE LISTA FINALE: [SYSTEM] + [HISTORY] + [USER ENRICHED]
-            # Questo dice al modello esplicitamente: "Tu sei questo (System)" e "L'utente ha detto questo (User)"
             final_messages = [
                 {"role": "system", "content": system_instructions}
             ] + messages_payload + [
                 {"role": "user", "content": final_user_content}
             ]
 
+            # Aggiunge il messaggio vuoto dell'assistente che verrà riempito in streaming
             self.messages.append(ChatMessage(id=str(uuid.uuid4()), role="assistant", content="", sources=sources, debug_md=debug_md))
             yield rx.scroll_to("chat_bottom")
 
             full_resp = ""
             if llm_client:
-                # Usiamo final_messages invece di messages_payload modificato in place
                 stream = llm_client.chat.completions.create(
                     model=LLM_MODEL_NAME, messages=final_messages, temperature=0.1, stream=True
                 )
