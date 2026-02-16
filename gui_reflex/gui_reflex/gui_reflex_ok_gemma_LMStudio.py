@@ -75,7 +75,7 @@ NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_AUTH = ("neo4j", os.getenv("NEO4J_PASSWORD", "password_sicura"))
 
 # AI Models
-LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "gemma3:12b")
+LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "google/gemma-3-12b")
 VISION_MODEL_NAME = os.getenv("VISION_MODEL_NAME", LLM_MODEL_NAME)
 
 #EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-m3")
@@ -86,19 +86,15 @@ RERANKER_MODEL_NAME = "E:/Modelli/ms-marco-reranker"
 
 
 # LM Studio / OpenAI Compatible API
-#LM_STUDIO_URL = os.getenv("LM_STUDIO_URL", "http://localhost:1234/v1")
-#LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
+LM_STUDIO_URL = os.getenv("LM_STUDIO_URL", "http://localhost:1234/v1")
+LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/v1")
-OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")  # dummy key, Ollama non la valida
-
-
-MEMORY_LIMIT = int(os.getenv("MEMORY_LIMIT", "3"))  # number of turns (user+assistant)
+MEMORY_LIMIT = int(os.getenv("MEMORY_LIMIT", "6"))  # number of turns (user+assistant)
 
 # Retrieval knobs (RAG v2)
-QDRANT_CANDIDATES = int(os.getenv("QDRANT_CANDIDATES", "60"))     # retrieve top-N from qdrant
+QDRANT_CANDIDATES = int(os.getenv("QDRANT_CANDIDATES", "20"))     # retrieve top-N from qdrant
 RERANK_CANDIDATES = int(os.getenv("RERANK_CANDIDATES", "15"))     # Aumentato per catturare più sfumature
-FINAL_SOURCES = int(os.getenv("FINAL_SOURCES", "4"))             # Aumentato per dare più contesto
+FINAL_SOURCES = int(os.getenv("FINAL_SOURCES", "6"))             # Aumentato per dare più contesto
 MAX_PER_PAGE = int(os.getenv("MAX_PER_PAGE", "2"))                # ✅ FONDAMENTALE: Consente più chunk per la stessa pagina
 MAX_PER_DOC = int(os.getenv("MAX_PER_DOC", "3"))                  # ✅ FONDAMENTALE: Consente Deep-Dive su un singolo documento
 
@@ -119,7 +115,7 @@ GRAPH_MAX_FORMULAS = int(os.getenv("GRAPH_MAX_FORMULAS", "6"))
 GRAPH_MAX_NEIGHBOR_CHUNKS = int(os.getenv("GRAPH_MAX_NEIGHBOR_CHUNKS", "4"))
 
 # Prompt limits
-MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", "9000"))  # prevent prompt blow-ups
+MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", "14000"))  # prevent prompt blow-ups
 MAX_ASSISTANT_CHARS = int(os.getenv("MAX_ASSISTANT_CHARS", "12000"))
 
 AUDIT_ENABLED = True
@@ -166,10 +162,9 @@ try:
     )
 
 
-    print(f"🚀 Connecting to LLM via Ollama ({LLM_MODEL_NAME}) at {OLLAMA_URL}...")
-    llm_client = OpenAI(base_url=OLLAMA_URL, api_key=OLLAMA_API_KEY)
 
-
+    print(f"🚀 Connecting to LLM ({LLM_MODEL_NAME})...")
+    llm_client = OpenAI(base_url=LM_STUDIO_URL, api_key=LM_STUDIO_API_KEY)
 
     qdrant_client_inst = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
@@ -816,36 +811,46 @@ def fetch_pg_chunks_by_uuid(chunk_uuids: List[str]) -> Dict[str, Dict[str, Any]]
 
 
 def search_pg_bm25(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
-    if not PG_ENRICH_ENABLED or not pg_pool: return []
-    if not query_text.strip(): return []
+    if not PG_ENRICH_ENABLED or not pg_pool:
+        return []
+    if not query_text.strip():
+        return []
 
-    # Usiamo websearch_to_tsquery che è il più robusto (gestisce "virgolette", OR, ecc.)
+    # ✅ Versione ottimizzata: usa colonna tsv (pre-calcolata) + indice GIN
+    # Richiede: ALTER TABLE ... ADD COLUMN tsv; CREATE INDEX GIN(tsv)
     sql = """
-    SELECT chunk_uuid::text, content_raw, content_semantic, metadata_json,
+    SELECT
+        chunk_uuid::text,
+        content_raw,
+        content_semantic,
+        metadata_json,
         ts_rank_cd(
-            to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')), 
+            tsv,
             websearch_to_tsquery('simple', %s)
         ) AS rank
     FROM public.document_chunks
-    WHERE 
-        to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')) 
-        @@ websearch_to_tsquery('simple', %s)
-    ORDER BY rank DESC LIMIT %s;
+    WHERE tsv @@ websearch_to_tsquery('simple', %s)
+    ORDER BY rank DESC
+    LIMIT %s;
     """
-    
+
     conn = pg_pool.getconn()
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (query_text, query_text, limit))
             rows = cur.fetchall()
             return [{
-                "id": r[0], "content": r[2] or r[1], "metadata": r[3] or {}, "score": float(r[4])
+                "id": r[0],
+                "content": r[2] or r[1],
+                "metadata": r[3] or {},
+                "score": float(r[4])
             } for r in rows]
     except Exception as e:
         print(f"⚠️ BM25 Error: {e}")
         return []
     finally:
         pg_pool.putconn(conn)
+
 
 # =========================
 # 🔍 RAG v2 Retrieval
@@ -962,22 +967,39 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     counts: Dict[str, Any] = {}
     intent = detect_intent(query_text)
 
-    # 1) Embedding
+
+    # 1) Embedding (più leggero: no_grad + conversione controllata)
     t0 = time.time()
-    query_vector = embedder.encode(query_text, normalize_embeddings=True).tolist()
+    with torch.no_grad():
+        qv = embedder.encode(query_text, normalize_embeddings=True)
+
+    # qv può essere np.ndarray o list-like: convertiamo solo se serve
+    query_vector = qv.tolist() if hasattr(qv, "tolist") else list(qv)
+
     timings["embed"] = time.time() - t0
+
 
     # 2) Qdrant (Vettoriale)
     t0 = time.time()
     hits = []
     try:
         # Prendiamo pochi candidati ma buoni
+        # ✅ usa knob configurabili + scarica solo le chiavi necessarie (meno rete/CPU)
         hits = qdrant_client_inst.search(
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
-            limit=20, 
-            with_payload=True,
+            limit=QDRANT_CANDIDATES,
+            with_payload=models.PayloadSelectorInclude(
+                include=[
+                    "filename", "page", "page_no", "toon_type", "type",
+                    "tier", "section_hint",
+                    # testo: prendi solo uno tra text_sem/content_semantic/content_raw a seconda di ingestion
+                    "text_sem", "content_semantic", "content_raw", "content", "text",
+                    "image_id",
+                ]
+            ),
         )
+
         counts["qdrant_hits"] = len(hits)
         print(f"🌌 Qdrant ha trovato {len(hits)} chunk.")
     except Exception as e:
@@ -1035,63 +1057,63 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
         print("❌ NESSUN CANDIDATO TROVATO!")
         return [], "Nessun risultato."
 
+    # 5) SCORING INTELLIGENTE & FILENAME BOOST (versione stabile)
+    # Prepariamo token query (parole > 4 lettere) e limitiamo a pochi token "forti"
+    query_tokens = [w.lower() for w in query_text.split() if len(w) > 4]
+    # prendiamo i 2 token più lunghi: spesso sono i più discriminanti
+    query_tokens = sorted(set(query_tokens), key=len, reverse=True)[:2]
 
-    # 5) SCORING INTELLIGENTE & FILENAME BOOST (HARD MODE)
-    # Prepariamo token query (parole > 3 lettere) per catturare anche "WACC", "Table", ecc.
-    # RIMOSSO IL LIMITE [:2] per analizzare tutta la frase, non solo le parole più lunghe.
-    query_tokens = [w.lower() for w in query_text.split() if len(w) > 3]
-    
     print(f"🎯 Target Tokens (Filename Match): {query_tokens}")
 
     for c in candidates:
         fname_lower = (c.get("filename") or "").lower()
-        
-        # LOGICA BRUTALE: Se il nome file è nella query, questo chunk DEVE vincere.
-        boost = 0.0
-        hits_fname = 0
-        
-        # 1. Match Esatto Parziale (es. "Formulae_Table.pdf" contiene "formulae")
-        for token in query_tokens:
-            if token in fname_lower:
-                # Escludiamo parole troppo comuni per evitare falsi positivi
-                if token not in ["della", "delle", "file", "documento", "page", "pagina"]:
-                    hits_fname += 1
-        
-        # 2. Assegnazione Boost: +5.0 punti portano il documento in Cima Assoluta
-        if hits_fname > 0:
-            boost = 5.0 * hits_fname  
-            c["origin"] += " [TARGET FILE]"
-            print(f"   🚀 SUPER BOOST per {c.get('filename')} (Match: {hits_fname} token)")
 
-        # Score base + SUPER BOOST
+        # ✅ Boost graduato, NON +500:
+        # - match 1 token: +0.10
+        # - match 2 token: +0.20
+        hits_fname = 0
+        for token in query_tokens:
+            if token and token in fname_lower:
+                hits_fname += 1
+
+        boost = 0.10 * hits_fname
+
+        if hits_fname > 0:
+            c["origin"] += " [FNAME_MATCH]"
+            print(f"   🚀 Filename boost per {c.get('filename')} (hits={hits_fname})")
+
+        # Score base + piccolo boost (non distorce tutto)
         c["final_score"] = float(c.get("score_base", 0.0)) + boost
 
-    # 6) RERANKING SELETTIVO
-    # Mandiamo al reranker SOLO chi non ha già vinto per filename match
-    # Questo salva un sacco di tempo e previene che il reranker abbassi il target
-    
-    # Separiamo i "Vincitori sicuri" (Target File) dagli altri
-    winners = [c for c in candidates if c["final_score"] > 400]
-    others = [c for c in candidates if c["final_score"] <= 400]
-    
-    # Rerankiamo solo gli "others" (i top 15)
-    others.sort(key=lambda x: x["final_score"], reverse=True)
-    top_others = others[:15]
-    
+
+   
+    # 6) RERANKING SELETTIVO (versione veloce + robusta)
+    # Rerankiamo solo i top-N per final_score (pre-score), così limitiamo CPU
+    others = sorted(candidates, key=lambda x: float(x.get("final_score", 0.0)), reverse=True)
+    top_others = others[:RERANK_CANDIDATES]  # usa env var già presente
+
+    def _rerank_text(s: str, max_chars: int = 1000) -> str:
+        s = (s or "").strip()
+        return s if len(s) <= max_chars else s[:max_chars]
+
     if reranker and top_others:
         t0 = time.time()
-        pairs = [(query_text, c["content"]) for c in top_others]
+        pairs = [(query_text, _rerank_text(c.get("content", ""))) for c in top_others]
         try:
             scores = reranker.predict(pairs)
             for i, score in enumerate(scores):
-                top_others[i]["final_score"] = float(score) # Score normale del reranker
+                top_others[i]["final_score"] = float(score)
         except Exception as e:
             print(f"⚠️ Reranker Error: {e}")
         timings["rerank"] = time.time() - t0
+
+    # Pool finale = rerankati (top) + resto non rerankato
+    final_pool = top_others + others[RERANK_CANDIDATES:]
+    final_pool.sort(key=lambda x: float(x.get("final_score", 0.0)), reverse=True)
+
     
-    # Riuniamo tutto: Vincitori (Score 500+) + Altri Rerankati
-    final_pool = winners + top_others
-    final_pool.sort(key=lambda x: x["final_score"], reverse=True)
+    
+    
     
     # 7) Selezione Finale (DIVERSIFY)
     # Riduciamo a 5 fonti massime per evitare blocchi LLM
@@ -1592,57 +1614,23 @@ class State(rx.State):
                 {"role": "user", "content": final_user_content}
             ]
 
-
-            # Aggiunge subito un messaggio "placeholder" (senza fonti) così la UI non sembra bloccata
-            assistant_id = str(uuid.uuid4())
-            self.messages.append(
-                ChatMessage(
-                    id=assistant_id,
-                    role="assistant",
-                    content="⏳ Sto generando la risposta…",
-                    sources=[],          # ✅ NON mostrare fonti subito
-                    debug_md=""          # ✅ audit dopo
-                )
-            )
+            # Aggiunge il messaggio vuoto dell'assistente che verrà riempito in streaming
+            self.messages.append(ChatMessage(id=str(uuid.uuid4()), role="assistant", content="", sources=sources, debug_md=debug_md))
             yield rx.scroll_to("chat_bottom")
-            yield  # ✅ forza refresh UI
 
-            # --- BLOCCO UNICO DI GENERAZIONE CORRETTO ---
-            # --- BLOCCO UNICO DI GENERAZIONE (FIXATO) ---
             full_resp = ""
             if llm_client:
-                # Usiamo extra_body per passare i parametri OLLAMA (memoria estesa)
                 stream = llm_client.chat.completions.create(
-                    model=LLM_MODEL_NAME, 
-                    messages=final_messages, 
-                    temperature=0.0, # Temperatura 0 per precisione sui numeri
-                    stream=True,
-                    extra_body={
-                        "options": {
-                            "num_ctx": 8192,       # <--- ESTENDE LA MEMORIA (Evita tagli documenti)
-                            "num_predict": 1024,   # Lunghezza massima risposta
-                            "repeat_penalty": 1.1  # Riduce le ripetizioni
-                        }
-                    }
+                    model=LLM_MODEL_NAME, messages=final_messages, temperature=0.1, stream=True
                 )
-                
                 for chunk in stream:
                     delta = chunk.choices[0].delta
                     if delta and getattr(delta, "content", None):
                         full_resp += delta.content
                         self.messages[-1].content = strip_id_leaks(full_resp)
                         yield
-
-                # ✅ SOLO ALLA FINE agganciamo le fonti e l'audit
-                # Questo evita sfarfallii o popup vuoti durante la generazione
-                self.messages[-1].sources = sources
-                self.messages[-1].debug_md = debug_md
-                yield
-            else:
-                self.messages[-1].content = "⚠️ LLM non inizializzato. Verifica che Ollama sia attivo."
-                self.messages[-1].sources = sources
-                self.messages[-1].debug_md = debug_md
-                yield
+            else: 
+                self.messages[-1].content = "⚠️ LLM non inizializzato."
 
         finally:
             self.is_processing = False

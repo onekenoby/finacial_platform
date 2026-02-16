@@ -29213,5 +29213,155 @@
     "verb": "DIVIDE",
     "object": "",
     "qualifier": "BY"
+  },
+  "ASSUMED_TO_BE": {
+    "verb": "ASSUME",
+    "object": "",
+    "qualifier": ""
+  },
+  "IS_TITLED": {
+    "verb": "TITLE",
+    "object": "",
+    "qualifier": ""
+  },
+  "EDITION": {
+    "verb": "PUBLISH",
+    "object": "BOOK",
+    "qualifier": ""
+  },
+  "HAS_ID": {
+    "verb": "HAVE",
+    "object": "ID",
+    "qualifier": ""
+  },
+  "BASIS": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "CHARACTERISTIC": {
+    "verb": "DESCRIBE",
+    "object": "FEATURE",
+    "qualifier": ""
+  },
+  "IMPLEMENTATION": {
+    "verb": "PROVIDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "OUTPUT": {
+    "verb": "GENERATE",
+    "object": "RESULT",
+    "qualifier": ""
+  },
+  "TOOL": {
+    "verb": "USE",
+    "object": "TASK",
+    "qualifier": ""
+  },
+  "CONSENTE": {
+    "verb": "ALLOW",
+    "object": "CREATE",
+    "qualifier": ""
+  },
+  "CONSENTE DI CREARE": {
+    "verb": "ALLOW",
+    "object": "CREATE",
+    "qualifier": ""
+  },
+  "CONSENTE DI MASSIMIZZARE": {
+    "verb": "ALLOW",
+    "object": "MAXIMIZE",
+    "qualifier": ""
+  },
+  "CONSENTE DI MINIMIZZARE": {
+    "verb": "ALLOW",
+    "object": "MINIMIZE",
+    "qualifier": ""
+  },
+  "ENTRA": {
+    "verb": "ENTER",
+    "object": "",
+    "qualifier": ""
+  },
+  "MINIMIZZA": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "APPLICABILE A": {
+    "verb": "APPLY",
+    "object": "",
+    "qualifier": "TO"
+  },
+  "CERCA DI DETERMINARE": {
+    "verb": "DETERMINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONFRONTA CON": {
+    "verb": "COMPARE",
+    "object": "",
+    "qualifier": "WITH"
+  },
+  "RICHIESTA DI": {
+    "verb": "REQUEST",
+    "object": "",
+    "qualifier": ""
+  },
+  "SFRUTTA": {
+    "verb": "EXPLOIT",
+    "object": "",
+    "qualifier": ""
+  },
+  "UTILIZZO DI": {
+    "verb": "USE",
+    "object": "",
+    "qualifier": ""
+  },
+  "COMPONENTE DI": {
+    "verb": "CONTAIN",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "SEGUITO DA": {
+    "verb": "FOLLOW",
+    "object": "",
+    "qualifier": "DA"
+  },
+  "APPLIED TO": {
+    "verb": "APPLY",
+    "object": "",
+    "qualifier": ""
+  },
+  "PUBLISHED BY": {
+    "verb": "PUBLISH",
+    "object": "",
+    "qualifier": ""
+  },
+  "IS_ANALYZED_BY": {
+    "verb": "ANALYZED",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "IS_REPRESENTED_BY": {
+    "verb": "REPRESENTED",
+    "object": "ENTITY",
+    "qualifier": ""
+  },
+  "CAN IDENTIFY": {
+    "verb": "IDENTIFY",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROVIDES BASIS FOR": {
+    "verb": "PROVIDE",
+    "object": "BASIS",
+    "qualifier": ""
+  },
+  "PRACTICES": {
+    "verb": "PRACTICE",
+    "object": "",
+    "qualifier": ""
   }
 }
