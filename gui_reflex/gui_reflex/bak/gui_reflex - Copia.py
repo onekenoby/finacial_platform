@@ -1,21 +1,26 @@
 import reflex as rx
 import torch
-import uuid
 import os
 import time
 import re
-from datetime import datetime
 import json
 import hashlib
-from pydantic import BaseModel, Field
+import psycopg2
+import requests
+from collections import Counter
 
+from psycopg2.pool import SimpleConnectionPool
+from psycopg2.extras import execute_values
+from pydantic import BaseModel, Field
+from datetime import datetime
 from typing import List, Dict, Optional, Tuple, Any
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer, CrossEncoder
-from qdrant_client import QdrantClient
 from neo4j import GraphDatabase
 from openai import OpenAI
 
+from qdrant_client import QdrantClient, models  # <--- Serve per il filtro Tier A/C
+from sentence_transformers import SentenceTransformer, CrossEncoder # <--- Per i vettori della GUI
+import uuid # <--- Per generare gli ID dei messaggi
 
 def looks_garbled(text: str) -> bool:
     """
@@ -26,7 +31,6 @@ def looks_garbled(text: str) -> bool:
         return False
     bad = ["□", "\ufffd"]  # square box, replacement char
     return any(b in text for b in bad)
-
 
 
 # =========================
@@ -41,12 +45,30 @@ COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "financial_docs")
 # =========================
 # RAG TIER POLICY
 # =========================
-RAG_DEFAULT_TIERS = os.getenv("RAG_DEFAULT_TIERS", "A,B")  # default prudente
+RAG_DEFAULT_TIERS = os.getenv("RAG_DEFAULT_TIERS", "A,B,C")  # default prudente
+
+##### NB DA GENERALIZZARE
 RAG_NEWS_KEYWORDS = os.getenv(
     "RAG_NEWS_KEYWORDS",
-    "news,oggi,ieri,ultima,ultime,rumor,breaking,aggiornamenti,recente,recent"
+    "news,oggi,ieri,cina,china,geopolitica,ultima,ultime,rumor,breaking,aggiornamenti,recente"
 )
 
+# =========================
+# 🐘 POSTGRES (Timescale) - RAG ENRICH
+# =========================
+PG_ENRICH_ENABLED = os.getenv("PG_ENRICH_ENABLED", "1") == "1"
+PG_HOST = os.getenv("PG_HOST", "127.0.0.1")
+PG_PORT = int(os.getenv("PG_PORT", "5432"))
+PG_DB   = os.getenv("PG_DB", "ai_ingestion")
+PG_USER = os.getenv("PG_USER", "admin")
+PG_PASS = os.getenv("PG_PASS", "admin_password")
+PG_MIN_CONN = int(os.getenv("PG_MIN_CONN", "1"))
+PG_MAX_CONN = int(os.getenv("PG_MAX_CONN", "5"))
+
+# preferisci content_raw (1) o content_semantic (0) quando disponibile
+PG_PREFER_RAW = os.getenv("PG_PREFER_RAW", "0") == "1"
+
+pg_pool: Optional[SimpleConnectionPool] = None
 
 # Neo4j Config
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
@@ -55,8 +77,13 @@ NEO4J_AUTH = ("neo4j", os.getenv("NEO4J_PASSWORD", "password_sicura"))
 # AI Models
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "google/gemma-3-12b")
 VISION_MODEL_NAME = os.getenv("VISION_MODEL_NAME", LLM_MODEL_NAME)
-EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-m3")
-RERANKER_MODEL_NAME = os.getenv("RERANKER_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+#EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "BAAI/bge-m3")
+EMBEDDING_MODEL_NAME = "E:/Modelli/bge-m3"
+
+#RERANKER_MODEL_NAME = os.getenv("RERANKER_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+RERANKER_MODEL_NAME = "E:/Modelli/ms-marco-reranker"
+
 
 # LM Studio / OpenAI Compatible API
 LM_STUDIO_URL = os.getenv("LM_STUDIO_URL", "http://localhost:1234/v1")
@@ -67,7 +94,7 @@ MEMORY_LIMIT = int(os.getenv("MEMORY_LIMIT", "6"))  # number of turns (user+assi
 # Retrieval knobs (RAG v2)
 QDRANT_CANDIDATES = int(os.getenv("QDRANT_CANDIDATES", "80"))     # retrieve top-N from qdrant
 RERANK_CANDIDATES = int(os.getenv("RERANK_CANDIDATES", "30"))     # rerank at most N (cost control)
-FINAL_SOURCES = int(os.getenv("FINAL_SOURCES", "6"))             # final context sources
+FINAL_SOURCES = int(os.getenv("FINAL_SOURCES", "12"))             # final context sources
 MAX_PER_PAGE = int(os.getenv("MAX_PER_PAGE", "1"))                # diversify results: max K per page
 MAX_PER_DOC = int(os.getenv("MAX_PER_DOC", "3"))                  # diversify results: max K per document
 
@@ -76,7 +103,7 @@ MAX_PER_DOC = int(os.getenv("MAX_PER_DOC", "3"))                  # diversify re
 # =========================
 TIER_BOOST_A = float(os.getenv("TIER_BOOST_A", "0.08"))
 TIER_BOOST_B = float(os.getenv("TIER_BOOST_B", "0.04"))
-TIER_PENALTY_C = float(os.getenv("TIER_PENALTY_C", "0.06"))
+TIER_PENALTY_C = float(os.getenv("TIER_PENALTY_C", "0.015"))
 
 # Se la query è news/rumor/recency, NON penalizzare Tier C
 TIER_C_PENALTY_IF_NOT_NEWS = os.getenv("TIER_C_PENALTY_IF_NOT_NEWS", "1") == "1"
@@ -88,7 +115,7 @@ GRAPH_MAX_FORMULAS = int(os.getenv("GRAPH_MAX_FORMULAS", "6"))
 GRAPH_MAX_NEIGHBOR_CHUNKS = int(os.getenv("GRAPH_MAX_NEIGHBOR_CHUNKS", "4"))
 
 # Prompt limits
-MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", "22000"))  # prevent prompt blow-ups
+MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", "24000"))  # prevent prompt blow-ups
 MAX_ASSISTANT_CHARS = int(os.getenv("MAX_ASSISTANT_CHARS", "12000"))
 
 AUDIT_ENABLED = True
@@ -102,7 +129,7 @@ print("⏳ Init Backend...")
 #device_embed = "cuda" if torch.cuda.is_available() else "cpu"
 # ...ogica che provi la CPU ma resti flessibile:
 
-device_embed = "cpu" if torch.cuda.is_available() else "cpu" # (In pratica lo forzi sempre)
+device_embed = "cuda" if torch.cuda.is_available() else "cpu"
 
 device_rerank = "cpu"  # IMPORTANT: avoid fighting with Gemma/Vision on the same P5000
 
@@ -113,11 +140,28 @@ qdrant_client_inst = None
 neo4j_driver = None
 
 try:
+    #print(f"🚀 Loading Embedding Model ({EMBEDDING_MODEL_NAME}) on {device_embed.upper()}...")
+    #embedder = SentenceTransformer(EMBEDDING_MODEL_NAME, device=device_embed)    
     print(f"🚀 Loading Embedding Model ({EMBEDDING_MODEL_NAME}) on {device_embed.upper()}...")
-    embedder = SentenceTransformer(EMBEDDING_MODEL_NAME, device=device_embed)
+    embedder = SentenceTransformer(
+        EMBEDDING_MODEL_NAME, 
+        device=device_embed, 
+        local_files_only=True # Fondamentale per la modalità offline
+    )    
+       
 
+    #print(f"🚀 Loading Reranker ({RERANKER_MODEL_NAME}) on {device_rerank.upper()}...")
+    #reranker = CrossEncoder(RERANKER_MODEL_NAME, device=device_rerank)
+    
     print(f"🚀 Loading Reranker ({RERANKER_MODEL_NAME}) on {device_rerank.upper()}...")
-    reranker = CrossEncoder(RERANKER_MODEL_NAME, device=device_rerank)
+    reranker = CrossEncoder(
+        RERANKER_MODEL_NAME, 
+        device=device_rerank,
+        # Se la libreria CrossEncoder lo supporta direttamente (dipende dalla versione), 
+        # altrimenti il percorso locale è sufficiente.
+    )
+
+
 
     print(f"🚀 Connecting to LLM ({LLM_MODEL_NAME})...")
     llm_client = OpenAI(base_url=LM_STUDIO_URL, api_key=LM_STUDIO_API_KEY)
@@ -125,6 +169,23 @@ try:
     qdrant_client_inst = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
     neo4j_driver.verify_connectivity()
+
+    if PG_ENRICH_ENABLED:
+        pg_pool = SimpleConnectionPool(
+            PG_MIN_CONN, PG_MAX_CONN,
+            host=PG_HOST, port=PG_PORT, dbname=PG_DB,
+            user=PG_USER, password=PG_PASS
+        )
+        # smoke test
+        conn = pg_pool.getconn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1;")
+        finally:
+            pg_pool.putconn(conn)
+
+
+
 
     print("✅ Risorse caricate e DB connessi.")
 except Exception as e:
@@ -153,9 +214,16 @@ class SourceItem(BaseModel):
     section_hint: str = ""
     image_id: Optional[int] = None
     #NEW
-    tier: str = ""
-
-
+    tier: str = "C"
+    # ✅ PG canonical provenance
+    pg_ingestion_ts: str = ""
+    pg_source_name: str = ""
+    pg_source_type: str = ""
+    pg_log_id: int = 0
+    pg_chunk_id: int = 0
+    pg_toon_type: str = ""
+    db_origin: str = "Unknown"
+    
 class RetrievalDebug(BaseModel):
     query: str = ""
     intent: str = "text"
@@ -257,15 +325,15 @@ def detect_intent(query: str) -> str:
     """Very cheap intent router: formula / chart / text."""
     q = (query or "").lower()
     # formula intent
-    if any(k in q for k in ["formula", "equazione", "latex", "lift", "support", "confidence", "probabilità", "probability"]):
+    if any(k in q for k in ["formula","matrix","matrice", "equazione", "equation","derivate", "derivata","integration","integrale","latex", "lift", "support", "confidence", "probabilità", "probability","limit","limite"]):
         return "formula"
     # chart intent
-    if any(k in q for k in ["grafico", "chart", "figura", "tabella", "table", "asse", "legend", "legenda", "trend", "candela", "ohlc", "volumi", "heatmap"]):
+    if any(k in q for k in ["grafico","graph","flow","flowchart","diagramma","diagram","prospect","prospetto", "chart", "figura", "tabella", "table", "asse", "legend", "legenda", "trend","slop", "candela", "candle","ohlc", "volumi", "volume","heatmap"]):
         return "chart"
     return "text"
 
 import re
-
+'''
 def is_user_data_analytics(query: str) -> bool:
     """
     Heuristica generale per capire se l'utente ha fornito dati
@@ -283,12 +351,43 @@ def is_user_data_analytics(query: str) -> bool:
 
     # parole chiave analitiche (generalissime)
     keywords = [
-        "calcola", "stima", "analizza", "regressione", "correlazione",
-        "varianza", "media", "trend", "stagional", "decompos",
-        "forecast", "time series", "serie storic", "modello"
+        "calcola","calculate","stima","estimation","estimate", "analizza","analyze","analyse", "regressione", "regression", "correlazione","correlation",
+        "varianza","variance","standard deviation","deviazione standard", "media","mean","average","ave","trend","slop","stagional","sesonal", "decompos",
+        "forecast","prediction", "time series", "serie storic", "model"
     ]
     return any(k in q for k in keywords)
+'''
 
+def is_user_data_analytics(query: str) -> bool:
+    """
+    Rileva se l'utente ha fornito dati nel prompt.
+    Attiva Analytics Mode solo se ci sono evidenze di dataset (numeri o parentesi).
+    """
+    q = query.lower()
+    # Verifica presenza di array [1, 2, 3] o molti numeri (più di 10)
+    has_data_structure = bool(re.search(r"\[[0-9,\s./-]+\]", q))
+    digit_count = len(re.findall(r"\d+", q))
+    
+    # Parole chiave analitiche
+    keywords = [
+        # Calcolo e Stima (Base)
+        "calcola", "calculate", "stima", "estimate", "totale", "total", "somma", "sum","analizza","analyse","analyze"
+        
+        # Statistica e Analisi Dati
+        "regressione", "regression", "correlazione", "correlation", "media", "mean", 
+        "average", "varianza", "variance", "deviazione", "std dev", "distribuzione", "distribution","standard deviation","ave","decompos",
+        
+        # Forecasting e Serie Storiche
+        "prevedi", "forecast", "proiezione", "projection", "trend", "stagionalità", "seasonality","slop","prediction","time series", "serie storic", "model",
+        
+        # Metriche Finanziarie (Se l'utente fornisce i dati)
+        "volatilità", "volatility", "sharpe", "beta", "alpha", "rendimento", "return", "drawdown","stocks","bound","azioni"
+    ]
+    has_keywords = any(k in q for k in keywords)
+
+    # TRIGGER: Attiva solo se ci sono dati forniti (strutture o molti numeri) E parole chiave
+    # Questo permette a "Analizza i documenti" di andare correttamente al RAG.
+    return (has_data_structure or digit_count > 10) and has_keywords
 
 def safe_payload_text(payload: Dict[str, Any]) -> str:
     """
@@ -359,9 +458,10 @@ def has_sufficient_ab_sources(sources: List[SourceItem]) -> bool:
 
 def tier_score_delta(tier: str, query_text: str) -> float:
     t = (tier or "").strip().upper()
-    if t.endswith("_A_METHODOLOGY") or t == "TIER_A_METHODOLOGY" or t == "A":
+    # Se la stringa contiene "A", assegna il boost di metodologia
+    if "A" in t:
         return TIER_BOOST_A
-    if t.endswith("_B_REFERENCE") or t == "TIER_B_REFERENCE" or t == "B":
+    if "B" in t:
         return TIER_BOOST_B
     if t.endswith("_C_NEWS") or t == "TIER_C_NEWS" or t == "C":
         if TIER_C_PENALTY_IF_NOT_NEWS and (not is_news_query(query_text)):
@@ -401,6 +501,7 @@ def append_audit_log(audit: AuditTrail):
             f.write(audit.model_dump_json() + "\n")
     except Exception as e:
         print(f"⚠️ Audit log write error: {e}")
+
 
 # =========================
 # 🔍 Neo4j Graph Expansion
@@ -534,23 +635,15 @@ def wants_news_tier(query_text: str) -> bool:
 
 
 def tier_qdrant_filter(query_text: str):
-    """
-    Default: include solo A+B (o quanto definito in RAG_DEFAULT_TIERS).
-    Se l'utente chiede esplicitamente news/recente, include anche C (nessun filtro).
-    """
-    if wants_news_tier(query_text):
-        return None  # include A/B/C
-
-    tiers = _parse_csv(RAG_DEFAULT_TIERS)
-    if not tiers:
-        tiers = ["A", "B"]
-
-    # Qdrant match any (stringhe)
-    return {
-        "must": [
-            {"key": "tier", "match": {"any": tiers}}
-        ]
-    }
+#    if is_news_query(query_text):
+#        return None  # include A/B/C
+#
+#    return {
+#        "must": [
+#            {"key": "tier", "match": {"any": ["A", "B", "C"]}}
+#        ]
+#    }
+    return
 
 def build_retrieval_audit_md(
     query_text: str,
@@ -559,313 +652,381 @@ def build_retrieval_audit_md(
     counts: Dict[str, Any],
     top_sources_preview: List[Dict[str, Any]],
 ) -> str:
-    """Audit compatto in markdown (non entra nel prompt LLM, solo UI)."""
+    """Audit avanzato che scompone l'attività di Qdrant, Postgres e Neo4j."""
     def ms(x: float) -> str:
         return f"{x*1000:.0f} ms"
 
     lines = []
-    lines.append("### 🔎 Audit Retrieval (Explainability)")
+    lines.append("### 🔎 Audit Retrieval (Multi-Database Analysis)")
     lines.append(f"- **Intent**: `{intent}`")
     lines.append(f"- **Query**: `{(query_text or '')[:180]}`")
 
-    # timings
-    if timings:
-        lines.append("\n#### ⏱️ Tempi")
-        for k in ["embed", "qdrant_search", "rerank", "diversify", "graph", "total"]:
-            if k in timings:
-                lines.append(f"- `{k}`: **{ms(timings[k])}**")
+    # 🌌 SEZIONE QDRANT (Vettoriale)
+    lines.append("\n#### 🌌 Qdrant (Vector Search)")
+    if "qdrant_search" in timings:
+        lines.append(f"- Tempo: **{ms(timings['qdrant_search'])}**")
+    lines.append(f"- Hits vettoriali: **{counts.get('qdrant_hits', 0)}**")
 
-    # counts
-    if counts:
-        lines.append("\n#### 📦 Conteggi")
-        if "hits" in counts:
-            lines.append(f"- Qdrant hits: **{counts['hits']}**")
-        if "candidates" in counts:
-            lines.append(f"- Candidates validi: **{counts['candidates']}**")
-        if "rerank_used" in counts:
-            lines.append(f"- Rerank usati: **{counts['rerank_used']}**")
-        if "final_primary" in counts:
-            lines.append(f"- Final primary: **{counts['final_primary']}**")
-        if "final_neighbors" in counts:
-            lines.append(f"- Graph neighbors: **{counts['final_neighbors']}**")
-        if "final_formulas" in counts:
-            lines.append(f"- Graph formulas: **{counts['final_formulas']}**")
+    # 🐘 SEZIONE POSTGRES (BM25)
+    lines.append("\n#### 🐘 Postgres (Keyword Search)")
+    if "bm25_search" in timings:
+        lines.append(f"- Tempo: **{ms(timings['bm25_search'])}**")
+    lines.append(f"- Match testuali: **{counts.get('bm25_hits', 0)}**")
 
-        # tier split (se presente)
-        tier_split = counts.get("tier_split", {})
-        if isinstance(tier_split, dict) and tier_split:
-            lines.append("- Tier split:")
-            for t, n in tier_split.items():
-                lines.append(f"  - `{t}`: **{n}**")
+    # 🕸️ SEZIONE NEO4J (Grafo)
+    if counts.get('final_formulas', 0) > 0 or "graph" in timings:
+        lines.append("\n#### 🕸️ Neo4j (Graph Expansion)")
+        if "graph" in timings:
+            lines.append(f"- Tempo: **{ms(timings['graph'])}**")
+        lines.append(f"- Formule/Relazioni: **{counts.get('final_formulas', 0)}**")
 
-    # top preview
-    if top_sources_preview:
-        lines.append("\n#### 🧾 Top selezionati (preview)")
-        for i, s in enumerate(top_sources_preview, start=1):
-            tier = s.get("tier", "")
-            lines.append(
-                f"- [{i}] `{s.get('filename','?')}` pag {s.get('page',0)} | "
-                f"type `{s.get('type','?')}` | tier `{tier}` | score **{s.get('score',0.0):.3f}**"
-            )
+    # ⚖️ SEZIONE PERFORMANCE & RERANK
+    lines.append("\n#### ⚖️ Fusione & Reranking")
+    if "rerank" in timings:
+        lines.append(f"- Tempo Reranker: **{ms(timings['rerank'])}**")
+    lines.append(f"- Candidati totali: **{counts.get('qdrant_hits', 0) + counts.get('bm25_hits', 0)}**")
+    if "total" in timings:
+        lines.append(f"- **Tempo Totale Retrieval**: **{ms(timings['total'])}**")
+
+    # 📦 DISTRIBUZIONE TIER
+    tier_split = counts.get("tier_split", {})
+    if tier_split:
+        lines.append("\n#### 📦 Tier Distribution")
+        for t, n in tier_split.items():
+            lines.append(f"- `{t}`: **{n}**")
 
     return "\n".join(lines).strip()
+
+def fetch_pg_chunks_by_uuid(chunk_uuids: List[str]) -> Dict[str, Dict[str, Any]]:
+    """
+    Ritorna: {chunk_uuid: {"content_raw":..., "content_semantic":..., "metadata_json":..., "ingestion_ts":...}}
+    Prende SEMPRE la riga più recente per chunk_uuid.
+    """
+    if not PG_ENRICH_ENABLED or not pg_pool or not chunk_uuids:
+        return {}
+
+    # dedup preservando ordine
+    seen = set()
+    uuids = []
+    for u in chunk_uuids:
+        if u and u not in seen:
+            uuids.append(u)
+            seen.add(u)
+
+    sql = """
+    WITH wanted(chunk_uuid) AS (VALUES %s),
+    ranked AS (
+      SELECT
+        d.chunk_uuid::text AS chunk_uuid,
+        d.content_raw,
+        d.content_semantic,
+        d.metadata_json,
+        d.ingestion_ts,
+        ROW_NUMBER() OVER (PARTITION BY d.chunk_uuid ORDER BY d.ingestion_ts DESC) AS rn
+     FROM public.document_chunks d
+    JOIN wanted w ON d.chunk_uuid::text = w.chunk_uuid::text
+    )
+    SELECT chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts
+    FROM ranked
+    WHERE rn = 1;
+    """
+
+    conn = pg_pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            execute_values(cur, sql, [(u,) for u in uuids])
+            rows = cur.fetchall()
+        out: Dict[str, Dict[str, Any]] = {}
+        for (chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts) in rows:
+            out[str(chunk_uuid)] = {
+                "content_raw": content_raw,
+                "content_semantic": content_semantic,
+                "metadata_json": metadata_json,
+                "ingestion_ts": ingestion_ts.isoformat() if ingestion_ts else "",
+            }
+        return out
+    except Exception as e:
+        print(f"⚠️ PG enrich error: {e}")
+        return {}
+    finally:
+        pg_pool.putconn(conn)
+
+
+def search_pg_bm25(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
+    """Ricerca testuale esatta (BM25) su Postgres."""
+    if not PG_ENRICH_ENABLED or not pg_pool:
+        return []
+
+    # Pulizia minima: rimuoviamo caratteri speciali per evitare errori in to_tsquery
+    clean_q = re.sub(r'[^\w\s]', ' ', query_text).strip()
+    # Trasformiamo la query in formato "parola1 & parola2" (AND logico)
+    ts_query = " & ".join(clean_q.split())
+    
+    if not ts_query: return []
+
+    sql = """
+    SELECT 
+        chunk_uuid::text, content_raw, content_semantic, metadata_json,
+        ts_rank_cd(to_tsvector('italian', content_semantic), to_tsquery('italian', %s)) AS rank
+    FROM public.document_chunks
+    WHERE to_tsvector('italian', content_semantic) @@ to_tsquery('italian', %s)
+    ORDER BY rank DESC
+    LIMIT %s;
+    """
+    conn = pg_pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (ts_query, ts_query, limit))
+            rows = cur.fetchall()
+        
+        return [{
+            "id": r[0], 
+            "content": r[2] or r[1], # semantic fallback su raw
+            "metadata": r[3] or {},
+            "score": float(r[4])
+        } for r in rows]
+    except Exception as e:
+        print(f"⚠️ BM25 Search Error: {e}")
+        return []
+    finally:
+        pg_pool.putconn(conn)
+
 
 
 # =========================
 # 🔍 RAG v2 Retrieval
 # =========================
+
+def fetch_pg_chunks_by_doc_and_index(pairs: List[Tuple[str, int]]) -> Dict[Tuple[str, int], Dict[str, Any]]:
+    """Return latest PG chunk rows for each (doc_id, chunk_index)."""
+    if not PG_ENRICH_ENABLED or not pg_pool or not pairs:
+        return {}
+
+    # dedup preserving order
+    seen = set()
+    uniq: List[Tuple[str, int]] = []
+    for d, i in pairs:
+        if not d:
+            continue
+        key = (str(d), int(i))
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(key)
+
+    sql = """
+    WITH wanted(doc_id, chunk_index) AS (VALUES %s),
+    ranked AS (
+      SELECT
+        d.doc_id::text AS doc_id,
+        d.chunk_index::int AS chunk_index,
+        d.chunk_uuid::text AS chunk_uuid,
+        d.content_raw,
+        d.content_semantic,
+        d.metadata_json,
+        d.ingestion_ts,
+        ROW_NUMBER() OVER (
+          PARTITION BY d.doc_id, d.chunk_index
+          ORDER BY d.ingestion_ts DESC
+        ) AS rn
+        FROM public.document_chunks d
+        JOIN wanted w ON d.chunk_uuid::text = w.chunk_uuid::text
+       AND d.chunk_index::int = w.chunk_index
+    )
+    SELECT doc_id, chunk_index, chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts
+    FROM ranked
+    WHERE rn = 1;
+    """
+
+    conn = pg_pool.getconn()
+    try:
+        with conn.cursor() as cur:
+            execute_values(cur, sql, [(d, i) for d, i in uniq])
+            rows = cur.fetchall()
+
+        out: Dict[Tuple[str, int], Dict[str, Any]] = {}
+        for (doc_id, chunk_index, chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts) in rows:
+            out[(str(doc_id), int(chunk_index))] = {
+                "chunk_uuid": chunk_uuid,
+                "content_raw": content_raw,
+                "content_semantic": content_semantic,
+                "metadata_json": metadata_json,
+                "ingestion_ts": ingestion_ts.isoformat() if ingestion_ts else "",
+            }
+        return out
+    except Exception as e:
+        print(f"⚠️ PG enrich (doc_id+chunk_index) error: {e}")
+        return {}
+    finally:
+        pg_pool.putconn(conn)
+
 def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
+    """
+    Versione Hybrid: Esegue ricerca parallela su Qdrant (vettoriale) e Postgres (BM25),
+    unisce i risultati deduplicandoli e applica il Reranker finale.
+    """
     if not embedder or not qdrant_client_inst:
         return [SourceItem(id="error", content="Backend non disponibile", filename="System")], "Backend non disponibile"
 
     t_total0 = time.time()
     timings: Dict[str, float] = {}
     counts: Dict[str, Any] = {}
+    intent = detect_intent(query_text) #
 
-    intent = detect_intent(query_text)
-
-    # 1) Dense retrieval candidates
+    # 1) Generazione Embedding Query (per Qdrant)
     t0 = time.time()
-    query_vector = embedder.encode(query_text, normalize_embeddings=True).tolist()
+    query_vector = embedder.encode(query_text, normalize_embeddings=True).tolist() #
     timings["embed"] = time.time() - t0
 
+    # 2) RICERCA VETTORIALE (QDRANT)
     t0 = time.time()
     try:
+        search_filter = models.Filter(
+            must=[models.FieldCondition(key="tier", match=models.MatchAny(any=["A", "B", "C"]))]
+        )
         hits = qdrant_client_inst.search(
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
             limit=QDRANT_CANDIDATES,
             with_payload=True,
-            query_filter=tier_qdrant_filter(query_text),  # ✅ AGGIUNGI QUESTO
-        )
+            query_filter=search_filter,
+        ) #
+        counts["qdrant_hits"] = len(hits)
     except Exception as e:
         print(f"❌ Qdrant Error: {e}")
-        return [], f"Qdrant error: {e}"
+        hits = []
     timings["qdrant_search"] = time.time() - t0
 
-    if not hits:
-        timings["total"] = time.time() - t_total0
-        debug_md = build_retrieval_audit_md(
-            query_text=query_text,
-            intent=intent,
-            timings=timings,
-            counts={"hits": 0, "candidates": 0, "rerank_used": 0},
-            top_sources_preview=[],
-        )
-        return [], debug_md
+    # 3) RICERCA TESTUALE (POSTGRES BM25) - NEW
+    t0 = time.time()
+    bm25_hits = search_pg_bm25(query_text, limit=30) 
+    counts["bm25_hits"] = len(bm25_hits)
+    timings["bm25_search"] = time.time() - t0
 
-    counts["hits"] = len(hits)
+    # 4) FUSIONE E DEDUPLICAZIONE (Hybrid Merge)
+    # Usiamo un dizionario keyed su ID per evitare duplicati tra le due ricerche
+    candidates_dict = {}
 
-    # 2) Build candidate list + intent-aware boost + tier capture
-    candidates = []
-    cross_inputs = []
-
-    tier_split: Dict[str, int] = {}
-
+    # Processa Hits da Qdrant
     for hit in hits:
         payload = hit.payload or {}
-        content = safe_payload_text(payload)
-        if not content:
-            continue
+        uid = str(hit.id)
+        content = safe_payload_text(payload) #
+        tier = get_payload_tier(payload) #
+        
+        candidates_dict[uid] = {
+            "id": uid,
+            "content": content,
+            "filename": str(payload.get("filename", "Unknown")),
+            "page": get_payload_page(payload), #
+            "type": get_payload_type(payload), #
+            "tier": tier,
+            #"db_origin":t.get("db_origin", "Unknown"),
+            "score_vec": float(hit.score or 0.0),
+            "db_origin": "Qdrant",
+            "score_bm25": 0.0,
+            "section_hint": get_payload_section(payload),
+            "image_id": get_payload_image_id(payload),
+        }
 
-        f = str(payload.get("filename", "Unknown"))
-        page = get_payload_page(payload)
-        ttype = get_payload_type(payload)
-        section_hint = get_payload_section(payload)
-        image_id = get_payload_image_id(payload)
-
-        # ✅ tier dal payload (se manca fallback vuoto)
-        tier = get_payload_tier(payload)
-
-        base_score = float(getattr(hit, "score", 0.0) or 0.0)
-
-        # Penalize garbled PDF text chunks; for formula intent we can even skip them
-        if looks_garbled(content):
-            if intent == "formula" and ttype not in ("formula_page", "page_vision_math", "graph_formulas"):
-                continue
-            if ttype in ("text", "paragraph", "page_text"):
-                base_score -= 0.25
-
-        boost = 0.0
-        if intent == "formula" and ttype in ("formula_page", "page_vision_math"):
-            boost += 0.18
-        if intent == "formula" and "latex" in content.lower():
-            boost += 0.06
-        if intent == "chart" and ttype in ("image_vision", "image_desc"):
-            boost += 0.14
-        if intent == "chart" and any(k in content.lower() for k in ["axes:", "legend:", "numbers:", "series:"]):
-            boost += 0.06
-
-        # ✅ Tier-aware ranking (A > B > C) se presente helper
-        if "tier_score_delta" in globals():
-            boost += float(tier_score_delta(tier, query_text))
-
-        final_score = base_score + boost
-
-        candidates.append(
-            {
-                "id": str(hit.id),
-                "content": content,
-                "filename": f,
-                "page": page,
-                "type": ttype,
-                "score": base_score,
-                "final_score": final_score,
-                "section_hint": section_hint,
-                "image_id": image_id,
-                "tier": tier,
+    # Processa Hits da Postgres BM25
+    for b in bm25_hits:
+        uid = b["id"]
+        if uid in candidates_dict:
+            # Se esiste già, aggiorniamo solo lo score BM25 (opzionale per debug)
+            candidates_dict[uid]["score_bm25"] = b["score"]
+            candidates_dict[uid]["db_origin"] = "Hybrid (Vec+Key)" # <--- UPGRADE A IBRIDO
+        else:
+            # Se è un risultato nuovo trovato solo dal testo esatto
+            meta = b.get("metadata", {})
+            candidates_dict[uid] = {
+                "id": uid,
+                "content": b["content"],
+                "filename": meta.get("filename", "Unknown"),
+                "page": int(meta.get("page_no") or 1),
+                "type": meta.get("toon_type", "text"),
+                "tier": meta.get("tier", "C"),
+                "db_origin": "Postgres",
+                "score_vec": 0.0,
+                "score_bm25": b["score"],
+                "section_hint": meta.get("section_hint", ""),
+                "image_id": meta.get("image_id"),
             }
-        )
 
-        tier_split[tier] = tier_split.get(tier, 0) + 1
-
-        # prepare cross-encoder inputs
-        cross_inputs.append((query_text, content))
-
-    counts["candidates"] = len(candidates)
-    counts["tier_split"] = tier_split
-
+    candidates = list(candidates_dict.values())
     if not candidates:
-        timings["total"] = time.time() - t_total0
-        debug_md = build_retrieval_audit_md(
-            query_text=query_text,
-            intent=intent,
-            timings=timings,
-            counts=counts,
-            top_sources_preview=[],
-        )
-        return [], debug_md
+        return [], "Nessun risultato trovato nelle basi dati."
 
-    # 3) Cross-encoder rerank (cost-controlled)
-    t0 = time.time()
-    rerank_used = min(len(candidates), RERANK_CANDIDATES)
-    counts["rerank_used"] = rerank_used
+    # 5) Scoring Iniziale + Tier Boost
+    for c in candidates:
+        # Applica il boost/penalty in base al Tier definito nelle config
+        boost = float(tier_score_delta(c["tier"], query_text))
+        # Score base per l'ordinamento pre-rerank (media pesata o semplice somma)
+        c["base_score"] = c["score_vec"] + (c["score_bm25"] * 0.1) + boost
 
-    if reranker is not None:
-        try:
-            scores = reranker.predict(cross_inputs[:rerank_used])
-            for i in range(rerank_used):
-                candidates[i]["final_score"] += 0.15 * float(scores[i])
-        except Exception as e:
-            print(f"⚠️ Cross-encoder error: {e}")
-
-    timings["rerank"] = time.time() - t0
-
-    # 4) Sort by final_score desc
-    candidates.sort(key=lambda x: float(x.get("final_score", x.get("score", 0.0))), reverse=True)
-
-    # 5) Diversify (page/doc caps)
-    t0 = time.time()
-    if "diversify_candidates" in globals():
-        top = diversify(
-                    candidates,
-                    max_per_page=MAX_PER_PAGE,
-                    max_per_doc=MAX_PER_DOC,
-                    final_k=FINAL_SOURCES,
-        )
+    # 6) RERANKING (Cross-Encoder)
+    # Il reranker valuta la pertinenza reale tra domanda e testo, indipendentemente dal DB di origine
+    if reranker is not None and candidates:
+        t0 = time.time()
+        cross_inputs = [(query_text, c["content"] or "") for c in candidates[:RERANK_CANDIDATES]]
+        if cross_inputs:
+            scores = reranker.predict(cross_inputs)
+            for i in range(len(scores)):
+                candidates[i]["final_score"] = float(scores[i])
+        timings["rerank"] = time.time() - t0
     else:
-        # fallback: simple top-k
-        top = candidates[:FINAL_SOURCES]
-    timings["diversify"] = time.time() - t0
+        # Fallback se il reranker è spento
+        for c in candidates: c["final_score"] = c["base_score"]
 
-    # ensure at least one formula chunk is present when available
-    if intent == "formula":
-        formula_candidates = [c for c in candidates if c["type"] in ("formula_page", "page_vision_math")]
-        if formula_candidates:
-            if not any(t["type"] in ("formula_page", "page_vision_math") for t in top):
-                top = top[:-1] + [formula_candidates[0]]
+    # Ordinamento finale per score del Reranker
+    candidates.sort(key=lambda x: x.get("final_score", 0.0), reverse=True)
+    
+    # 7) Diversificazione (Max K per pagina/doc)
+    top = diversify(candidates, MAX_PER_PAGE, MAX_PER_DOC, FINAL_SOURCES) #
 
-    # 6) Neo4j enrichment: entities + formulas + neighbor chunks
-    t0 = time.time()
-    chunk_ids = [t["id"] for t in top]
-    entities_map = get_graph_entities(chunk_ids)
-
+    # 8) Preparazione SourceItem finali
     sources: List[SourceItem] = []
+    tier_counts = {}
     for t in top:
-        ents = entities_map.get(t["id"], [])
-        uniq = []
-        seen = set()
-        for e in ents:
-            if e.name not in seen:
-                uniq.append(e)
-                seen.add(e.name)
+        sources.append(SourceItem(
+            id=t["id"], 
+            content=t["content"],
+            filename=t["filename"], 
+            page=t["page"], 
+            type=t["type"],
+            score=t.get("final_score", 0.0), 
+            tier=t["tier"],
+            db_origin=t.get("db_origin", "Unknown"), 
+            section_hint=t.get("section_hint", ""),
+            image_id=t.get("image_id")
+        ))
+        tier_counts[t["tier"]] = tier_counts.get(t["tier"], 0) + 1
+            
+    counts["final_primary"] = len(sources)
+    counts["tier_split"] = tier_counts
 
-        sources.append(
-            SourceItem(
-                id=t["id"],
-                content=t["content"],
-                filename=t["filename"],
-                page=t["page"],
-                type=t["type"],
-                score=float(t.get("final_score", t.get("score", 0.0))),
-                graph_context=uniq,
-                section_hint=t.get("section_hint", ""),
-                image_id=t.get("image_id"),
-                tier=t.get("tier", ""),
-            )
-        )
-
+    # 9) Graph Expansion (Neo4j) -
     if GRAPH_EXPAND_ENABLED and neo4j_driver:
+        t0 = time.time()
+        chunk_ids = [s.id for s in sources if s.id and s.id != "error"]
         formulas = get_formulas_for_chunks(chunk_ids, limit=GRAPH_MAX_FORMULAS)
-
-        neighbor_ids = get_neighbor_chunk_ids(chunk_ids, limit=GRAPH_MAX_NEIGHBOR_CHUNKS)
-        neighbor_sources = fetch_chunks_from_qdrant_by_ids(neighbor_ids)
-
-        for ns in neighbor_sources:
-            ns.type = "graph_neighbor"
-            ns.score = 0.0
-            sources.append(ns)
-
         if formulas:
-            sources.append(
-                SourceItem(
-                    id="graph_formulas",
-                    content="FORMULE (da Neo4j):\n" + "\n".join(f"- {x}" for x in formulas),
-                    filename="Neo4j",
-                    page=0,
-                    type="graph_formulas",
-                    score=0.0,
-                    graph_context=[],
-                )
-            )
-
-    timings["graph"] = time.time() - t0
-
-    # 7) final trim (keep prompt bounded)
-    primary = [s for s in sources if s.type not in ("graph_neighbor",)]
-    neighbors = [s for s in sources if s.type == "graph_neighbor"]
-    formulas_src = [s for s in sources if s.type == "graph_formulas"]
-
-    final_sources = primary[:FINAL_SOURCES] + neighbors[:max(0, 3)] + formulas_src[:1]
-
-    counts["final_primary"] = len(primary[:FINAL_SOURCES])
-    counts["final_neighbors"] = len(neighbors[:max(0, 3)])
-    counts["final_formulas"] = len(formulas_src[:1])
+            sources.append(SourceItem(
+                id="graph_formulas", 
+                content="CONTESTO MATEMATICO (Neo4j):\n" + "\n".join(f"- {x}" for x in formulas),
+                filename="Knowledge Graph", 
+                type="graph_formulas",
+                tier="GRAPH"
+            ))
+            counts["final_formulas"] = len(formulas)
+        timings["graph"] = time.time() - t0
 
     timings["total"] = time.time() - t_total0
-
-    # 8) Build audit markdown (TOP preview)
-    top_preview = []
-    for s in final_sources[: min(len(final_sources), FINAL_SOURCES)]:
-        top_preview.append(
-            {
-                "filename": s.filename,
-                "page": s.page,
-                "type": s.type,
-                "tier": getattr(s, "tier", ""),
-                "score": float(s.score or 0.0),
-            }
-        )
-
-    debug_md = build_retrieval_audit_md(
-        query_text=query_text,
-        intent=intent,
-        timings=timings,
-        counts=counts,
-        top_sources_preview=top_preview,
-    )
-
-    return final_sources, debug_md
+    
+    # Costruzione Audit Markdown per la UI
+    debug_md = build_retrieval_audit_md(query_text, intent, timings, counts, []) #
+    
+    return sources, debug_md
 
 
 
@@ -898,75 +1059,120 @@ def build_context_block(sources: List[SourceItem], max_chars: int = MAX_CONTEXT_
             break
     return "".join(parts).strip()
 
-
 def build_system_instructions(intent: str) -> str:
-    """Finance-grade instructions, but fluent and without leaking technical IDs."""
-    base = (
-        "Sei un analista finanziario e quantitativo. Rispondi in modo naturale e scorrevole, come un umano.\n"
-        "Regole:\n"
-        "1) Usa le informazioni del contesto quando pertinenti. Se l’utente fornisce dati (liste/tabelle/valori), puoi analizzarli direttamente come fonte primaria. Se il contesto è irrilevante, ignoralo.\n"
-        "2) Quando citi una fonte, usa esclusivamente il formato [numero] (es: [1]).\n"
-        "3) NON scrivere mai codici tecnici, id, UUID, né stringhe tipo 'id=...'.\n"
-        "4) Se il contesto non basta, dillo chiaramente e spiega cosa manca.\n"
-        "5) Per formule: riporta la formula in LaTeX tra $...$ e spiega le variabili solo se nel contesto.\n"
-        "6) Se nel testo compaiono simboli strani/illeggibili (□ o simili), ignorali e preferisci i blocchi con LaTeX.\n"
-        "\n"
-        "FORMATO OUTPUT OBBLIGATORIO:\n"
-        "A) Risposta (discorsiva, max ~15 righe)\n"
-        "B) Evidenze (bullet list). Ogni bullet DEVE citare almeno una fonte [n] e dire cosa supporta.\n"
-        "C) Limiti/Assunzioni: se un dettaglio non è nel contesto, scrivi cosa manca.\n"
-        "D) Fonti (riga finale): '[1] filename pag X; [2] ...'\n"
-        )
+    """
+    Generates the core system prompt for the LLM.
+    Implements Truth Hierarchy, Symbolic Validation, and Dynamic Intent Adaptation.
+    """
+    # 1. Base Core Prompt (Statico)
+    base = """
+ROLE: Senior Quantitative Financial Analyst.
+
+STRICT DOMAIN RULE: Your knowledge is EXCLUSIVELY limited to the provided ### CONTEXT ### blocks. 
+If information is missing or the context is insufficient, state it clearly in section 'C) Limiti e Assunzioni'.
+
+TRUTH HIERARCHY (MANDATORY):
+1. [TIER A - Methodology]: This is your Ground Truth. Definitions, official formulas, and canons here are absolute and override any other source.
+2. [TIER B - Research]: Technical support, academic papers, and deep theoretical context to support Methodology.
+3. [TIER C - News]: Temporal updates, market rumors, and recent events. Use this ONLY for current context.
+
+SYMBOLIC VALIDATION & CROSS-TIER LOGIC:
+Before formulating 'A) Risposta', you must internally perform a consistency check:
+- Identify any LaTeX formulas $...$ provided in [TIER A] or [KNOWLEDGE GRAPH].
+- Cross-reference current data from [TIER C] against the rules established in [TIER A].
+- If [TIER C] (News) proposes a logic, value, or trend that CONTRADICTS [TIER A] (Methodology), you MUST start your response with: 
+  "⚠️ WARNING: Methodological Conflict Detected".
+- If answering primarily from [TIER C] because [TIER A/B] are missing, start with:
+  "⚠️ WARNING: Methodological Verification Unavailable".
+
+VISUAL DATA HANDLING:
+Context chunks labeled as (immagine) are high-fidelity semantic descriptions generated via Vision AI + Tesseract OCR during ingestion. Treat these descriptions as factual visual evidence from the original documents.
+
+OUTPUT STRUCTURE (STRICT ADHERENCE REQUIRED):
+**A) Risposta**
+[Detailed analytical answer with numeric citations [n]. Apply the Truth Hierarchy and mandatory warnings here.]
+
+**B) Evidenze**
+[Numbered bullet points: [n] specific text snippet, formula, or visual data point used.]
+
+**C) Limiti e Assunzioni**
+[Detail information gaps, missing Tiers, or assumptions made to bridge data points.]
+
+**D) Fonti**
+[List of files used: [n] filename.pdf, Page X (Tier X)]
+
+LANGUAGE RULE:
+You MUST identify the user's language and respond EXCLUSIVELY in that same language.
+"""
+
+    # 2. Dynamic Intent Adaptation (Dinamico)
     if intent == "formula":
-        base += "\nNota: la domanda riguarda formule. Dai priorità ai blocchi con LaTeX ($...$) e/o 'FORMULE'.\n"
+        base += "\nINTENT PRIORITY (FORMULA):\nEnsure maximum precision in LaTeX formatting ($...$) and mathematical consistency. Verify variable definitions against [TIER A] and [KNOWLEDGE GRAPH].\n"
     elif intent == "chart":
-        base += "\nNota: la domanda riguarda grafici/tabelle. Descrivi assi, legenda, trend e numeri visibili.\n"
+        base += "\nINTENT PRIORITY (CHART):\nFocus heavily on extracting and describing trends, axes, and specific data points from visual analyses in the (immagine) chunks.\n"
+    
     return base
 
 def tier_guardrail_instructions(query_text: str) -> str:
     news = is_news_query(query_text)
     return (
         "GUARDRAILS TIER-FIRST (FINANCE-GRADE):\n"
-        "1) Tier A: fonte primaria per definizioni, teoria, meccanismi.\n"
-        "2) Tier B: esempi, casi d’uso, applicazioni.\n"
-        "3) Tier C: SOLO contesto temporale (news/rumors). Se usi Tier C, indica SEMPRE una data.\n"
-        "4) Non inventare: ogni affermazione deve essere supportata dalle fonti nel contesto.\n"
-        "5) Se le fonti non bastano, dichiaralo esplicitamente.\n"
-        f"6) {'Query news: Tier C ammesso per “cosa è successo”, spiegazioni ancorate a Tier A/B.' if news else 'Query non-news: Tier C non deve guidare le affermazioni centrali.'}\n"
+        "1) Tier A: Primary source for definitions, theory, and mechanisms.\n"
+        "2) Tier B: Examples, use cases, and applications.\n"
+        "3) Tier C: Temporal context and recent events. ALWAYS specify dates if available.\n"
+        "4) Grounding: Every statement must be supported by the provided context. Do not hallucinate.\n"
+        "5) Gap Analysis: If sources are insufficient, state it explicitly in section C.\n"
+        f"6) {'Query news: Use Tier C as the primary source for facts.' if news else 'Query standard: Use Tier C to provide updated context to Tier A/B data.'}\n"
+
+        "Language rule:\n"
+        "The final answer must always be written in the **SAME LANGUAGE** as the user's **QUESTION**.\n"
     )
+
+# “”
 
 def tier_guardrail_instructions_analytics(query_text: str) -> str:
     return (
         "GUARDRAILS ANALYTICS (DATA-DRIVEN):\n"
-        "1) Fonte primaria: i dati forniti direttamente dall’utente.\n"
-        "2) Usa conoscenza generale di statistica, matematica e data analysis.\n"
-        "3) Non inventare numeri non deducibili dai dati forniti.\n"
-        "4) Esplicita sempre assunzioni (frequenza, modello, ipotesi).\n"
-        "5) Se l’analisi è qualitativa o metodologica, dichiaralo chiaramente.\n"
+        "1) Primary source: data provided directly by the user.\n"
+        "2) You may use general knowledge of statistics, mathematics, and data analysis.\n"
+        "3) NDo not invent numbers that cannot be derived from the provided data.n"
+        "4) Always state assumptions (frequency, model, hypotheses).\n"
+        "5) If the analysis is qualitative or methodological, state it explicitly..\n"
+        
+        "Language rule:\n"
+        "The final answer must always be written in the **SAME LANGUAGE** as the user's **QUESTION**,\n"
+        "regardless of the language used in system instructions, guardrails, or document context.\n"
     )
 
 
 def build_system_instructions_analytics(intent: str = "analysis") -> str:
     return f"""
-Sei un analista quantitativo e data scientist.
+    ROLE: Quantitative Analyst and Data Scientist.
 
-Regole:
-- I dati forniti direttamente dall’utente (liste, tabelle, numeri) sono la FONTE PRIMARIA.
-- Puoi usare conoscenza generale di statistica, matematica e data analysis.
-- NON sei limitato al contesto documentale.
-- Se non puoi eseguire calcoli numerici esatti, fai un’analisi metodologica rigorosa e proponi procedure/codice.
-- Non inventare numeri non deducibili dai dati forniti.
-- Esplicita sempre assunzioni, limiti e alternative.
-- NON dire “non posso rispondere”: fornisci sempre la migliore analisi possibile.
-- NON inventare numeri non deducibili dai dati forniti.
+    LANGUAGE RULE:
+    - ALWAYS identify the language of the user's question first.
+    - YOU MUST ANSWER EXCLUSIVELY IN THE LANGUAGE OF THE USER. 
 
-Struttura consigliata (non obbligatoria):
-- Analisi preliminare
-- Metodo proposto
-- Interpretazione
-- Limiti
+    ANALYTICS RULES:
+    - User data provided in the prompt is your PRIMARY SOURCE.
+    - Use rigorous mathematical/statistical logic.
+    - If calculation is impossible, propose Python/R code.
 
-Intent rilevato: {intent}
+    OUTPUT STRUCTURE (MANDATORY):
+    Use ONLY the bold titles as headers.
+    **A) Risposta**
+    [Analisi dettagliata dei dati forniti]
+
+    **B) Evidenze**
+    [Passaggi logici o calcoli effettuati]
+
+    **C) Limiti e Assunzioni**
+    [Ipotesi statistiche o limiti dei dati forniti]
+
+    **D) Fonti**
+    [Indica 'Dati forniti dall'utente']
+
+    INTENT: {intent}
 """.strip()
 
 
@@ -1017,12 +1223,23 @@ def make_analytics_sources(user_query: str) -> List[SourceItem]:
 
 
 def strip_id_leaks(text: str) -> str:
-    """Safety net: remove accidental id=... leaks from model output."""
+    """
+    Rimuove artefatti tecnici se l'LLM ripete per errore i metadati nel testo.
+    """
     if not text:
         return ""
-    text = re.sub(r"\|\s*id=[0-9a-f\-]{8,}\s*\]", "]", text, flags=re.IGNORECASE)
-    text = re.sub(r"id=[0-9a-f\-]{8,}", "", text, flags=re.IGNORECASE)
-    return text
+    
+    # 1. Rimuove pattern tipo "SourceID: 1" o "File: report.pdf" se compaiono nel testo
+    text = re.sub(r"\[SourceID:\s*\d+.*?\]", "", text, flags=re.IGNORECASE)
+    text = re.sub(r">>> SOURCE \[\d+\].*?\n", "", text, flags=re.IGNORECASE)
+    
+    # 2. Rimuove UUID tecnici residui (es. 42f22b...)
+    text = re.sub(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", "", text)
+    
+    # 3. Pulisce eventuali tag rimasti orfani
+    text = text.replace("Tier: A", "").replace("Tier: B", "").replace("Tier: C", "")
+    
+    return text.strip()
 
 
 # =========================
@@ -1033,41 +1250,98 @@ class State(rx.State):
         ChatMessage(
             id="init",
             role="assistant",
-            content=f"Ciao! Sono attivo con **{LLM_MODEL_NAME}**. Fammi domande sui tuoi documenti.",
+            content=f"Ciao! Sono attivo con **{LLM_MODEL_NAME}**. Metodologia Tier A, Ricerca Tier B e News Tier C caricate. Fammi domande sui tuoi documenti.",
         )
     ]
     input_text: str = ""
     is_processing: bool = False
 
-    # Sidebar info
+    inline_open_for: str = ""
+    inline_tab: str = "sources"
+
     vram_info: str = "N/A"
     vram_free: str = "N/A"
     backend_status: str = "OK"
+
+    show_sources_modal: bool = False
+    modal_sources: List[SourceItem] = []
+    modal_debug_md: str = ""
+    modal_title: str = ""
+
+    def get_context_by_tier(self, query: str, tier: str) -> str:
+        try:
+            # Usa l'embedder globale già caricato per risparmiare RAM
+            query_vector = embedder.encode(query, normalize_embeddings=True).tolist()
+
+            search_result = qdrant_client_inst.search(
+                collection_name=COLLECTION_NAME,
+                query_vector=query_vector,
+                query_filter=models.Filter(
+                    must=[models.FieldCondition(key="tier", match=models.MatchValue(value=tier))]
+                ),
+                limit=3
+            )
+            # Fondamentale: usa safe_payload_text che prova tutte le chiavi (text_sem, raw, ecc.)
+            texts = []
+            for res in search_result:
+                p = res.payload or {}
+                content = safe_payload_text(p)
+                if content:
+                    texts.append(content)
+
+            return "\n".join(texts)
+        except Exception as e:
+            print(f"⚠️ Errore recupero Tier {tier}: {e}")
+            return ""
+
+    # --- Metodi di gestione UI ---
+    def toggle_inline_sources(self, msg_id: str):
+        if self.inline_open_for == msg_id and self.inline_tab == "sources":
+            self.inline_open_for = ""
+            return
+        self.inline_open_for = msg_id
+        self.inline_tab = "sources"
+
+    def toggle_inline_audit(self, msg_id: str):
+        if self.inline_open_for == msg_id and self.inline_tab == "audit":
+            self.inline_open_for = ""
+            return
+        self.inline_open_for = msg_id
+        self.inline_tab = "audit"
+
+    def close_inline_panel(self):
+        self.inline_open_for = ""
+
+    def open_sources_audit(self, msg_id: str):
+
+        self.modal_title = "Fonti & Audit"
+
+        found = next((m for m in self.messages if m.id == msg_id), None)
+
+        self.modal_sources = found.sources if found else []
+
+        self.modal_debug_md = (found.debug_md or "") if found else ""
+
+        self.show_sources_modal = True
+
+    def close_sources_audit(self):
+        self.show_sources_modal = False
 
     def on_load(self):
         self.refresh_gpu()
         self.refresh_backend_status()
 
     def refresh_backend_status(self):
-        ok = True
-        if embedder is None or qdrant_client_inst is None or llm_client is None:
-            ok = False
-        if neo4j_driver is None:
-            # neo4j optional, still ok
-            pass
-        self.backend_status = "OK" if ok else "DEGRADED"
+        self.backend_status = "OK" if llm_client else "DEGRADED"
 
     def refresh_gpu(self):
         self.vram_info = gpu_free_info()
-        # keep a short "free only"
         if torch.cuda.is_available():
             try:
-                free_bytes, total_bytes = torch.cuda.mem_get_info()
+                free_bytes, _ = torch.cuda.mem_get_info()
                 self.vram_free = f"{free_bytes / (1024**3):.1f} GB free"
-            except Exception:
-                self.vram_free = "N/A"
-        else:
-            self.vram_free = "CPU"
+            except: self.vram_free = "N/A"
+        else: self.vram_free = "CPU"
 
     def clear_history(self):
         self.messages = [self.messages[0]]
@@ -1075,6 +1349,7 @@ class State(rx.State):
     def set_input_text(self, text: str):
         self.input_text = text
 
+    # ✅ ORA INDENTATO CORRETTAMENTE DENTRO LA CLASSE
 
     async def handle_submit(self):
         if not self.input_text.strip() or self.is_processing:
@@ -1083,116 +1358,118 @@ class State(rx.State):
         user_query = self.input_text.strip()
         self.input_text = ""
         self.is_processing = True
+        
+        # English instructions for the model
+        language_reminder = "\n\nCRITICAL: You MUST detect the language of the user's question and answer EXCLUSIVELY in that same language."
 
         try:
             self.refresh_gpu()
-            self.refresh_backend_status()
-
             self.messages.append(ChatMessage(id=str(uuid.uuid4()), role="user", content=user_query))
             yield rx.scroll_to("chat_bottom")
 
             intent = detect_intent(user_query)
-
-            # ✅ NEW: decide se bypassare il retrieval (analytics su dati utente)
             analytics_mode = is_user_data_analytics(user_query)
 
+            # Variabili per il payload
+            system_instructions = ""
+            final_user_content = ""
+            debug_md = ""
+            sources = []
+
             if analytics_mode:
-                # ✅ Fonte sintetica per ripristinare “Fonti” + badge in UI
                 sources = make_analytics_sources(user_query)
-
-                # ✅ Audit UI (non retrieval): spiegazione chiara
-                debug_md = (
-                    "### 🔎 Audit (Analytics Mode)\n"
-                    "- retrieval: **bypassed**\n"
-                    "- motivo: **l’utente ha fornito un dataset / richiesta di calcolo**\n"
-                    "- fonte primaria: **USER_INPUT** (dati dell’utente)\n"
-                )
-
-                context_str = ""  # niente contesto documentale
+                debug_md = "### 🔎 Audit (Analytics Mode)\n- retrieval: **bypassed**\n- source: **USER_INPUT**"
                 system_instructions = build_system_instructions_analytics(intent)
-
-                final_prompt_content = (
-                    f"### ISTRUZIONI ###\n"
-                    f"{system_instructions}\n\n"
-                    f"{tier_guardrail_instructions_analytics(user_query)}\n\n"
-                    f"### DOMANDA UTENTE ###\n{user_query}"
-                )
-
-                #final_prompt_content = (
-                #    f"### ISTRUZIONI ###\n"
-                #    f"{system_instructions}\n\n"
-                #    f"{tier_guardrail_instructions_analytics(user_query)}\n\n"
-                #    f"### DOMANDA UTENTE ###\n{user_query}"
-                #)
-
-
+                
+                # In Analytics Mode, i dati sono nella domanda stessa
+                final_user_content = f"### QUESTION ###\n{user_query}{language_reminder}"
             else:
-                # ✅ retrieve_v2 returns (sources, debug_md)
+                # 1. RECUPERO DATI (Hybrid Search + Rerank)
                 sources, debug_md = retrieve_v2(user_query)
+                
+                # 2. RAGGRUPPAMENTO FONTI
+                c_a_list, c_b_list, c_c_list, c_g_list = [], [], [], []
 
-                context_str = build_context_block(sources, max_chars=MAX_CONTEXT_CHARS)
+                for i, s in enumerate(sources, start=1):
+                    snippet = (
+                        f">>> SOURCE [{i}] (File: {s.filename} | Tier: {s.tier} | DB: {s.db_origin})\n"
+                        f"{s.content}\n"
+                        f"---"
+                    )
+                    
+                    if s.tier == "A": c_a_list.append(snippet)
+                    elif s.tier == "B": c_b_list.append(snippet)
+                    elif s.tier == "C": c_c_list.append(snippet)
+                    elif s.tier == "GRAPH": c_g_list.append(snippet)
+
+                c_a = "\n".join(c_a_list)
+                c_b = "\n".join(c_b_list)
+                c_c = "\n".join(c_c_list)
+                c_g = "\n".join(c_g_list)
+                    
+                # 3. PROMPT DI SISTEMA (Generato QUI ma non incollato all'utente)
                 system_instructions = build_system_instructions(intent)
 
-                final_prompt_content = (
-                    f"### ISTRUZIONI ###\n"
-                    f"{system_instructions}\n\n"
-                    f"{tier_guardrail_instructions(user_query)}\n\n"
-                    f"### CONTESTO DOCUMENTALE ###\n{context_str}\n\n"
-                    f"### DOMANDA UTENTE ###\n{user_query}"
+                # Aggiunta audit nel debug visivo
+                debug_md += (
+                    f"\n\n### 🛡️ Tier Context Check\n"
+                    f"- Tier A (Methodology): {'✅ Presente' if c_a else '❌ Assente'}\n"
+                    f"- Tier B (Research): {'✅ Presente' if c_b else '❌ Assente'}\n"
+                    f"- Tier C (News): {'✅ Presente' if c_c else '❌ Assente'}"
                 )
 
-
+                # 4. ASSEMBLAGGIO CONTENUTO UTENTE (Solo Documenti + Domanda)
+                # NOTA: Abbiamo rimosso "### SYSTEM INSTRUCTIONS ###" da qui!
+                final_user_content = (
+                    f"### METHODOLOGY [TIER A] ###\n{c_a if c_a else 'No specific methodology found.'}\n\n"
+                    f"### RESEARCH [TIER B] ###\n{c_b if c_b else 'No specific research found.'}\n\n"
+                    f"### NEWS & EVENTS [TIER C] ###\n{c_c if c_c else 'No recent news found.'}\n\n"
+                    f"### KNOWLEDGE GRAPH [NEO4J] ###\n{c_g if c_g else 'No relational/formula data.'}\n\n"
+                    
+                    f"### USER QUESTION ###\n{user_query}\n"
+                    f"{language_reminder}"
+                )
+            
+            # --- COSTRUZIONE PAYLOAD CHAT (FIXED) ---
+            # Recuperiamo la storia
             messages_payload = build_alternating_history(self.messages, MEMORY_LIMIT)
+            
+            # Rimuove l'ultimo messaggio user (quello raw appena inserito) per sostituirlo con quello arricchito
             if messages_payload and messages_payload[-1]["role"] == "user":
                 messages_payload.pop()
-            messages_payload.append({"role": "user", "content": final_prompt_content})
+            
+            # Pulisce eventuali messaggi 'system' residui dalla history per evitare duplicati
+            messages_payload = [m for m in messages_payload if m["role"] != "system"]
 
-            # ✅ persist debug_md on assistant message
-            self.messages.append(
-                ChatMessage(
-                    id=str(uuid.uuid4()),
-                    role="assistant",
-                    content="",
-                    sources=sources,
-                    debug_md=debug_md,
-                )
-            )
+            # COSTRUZIONE LISTA FINALE: [SYSTEM] + [HISTORY] + [USER ENRICHED]
+            # Questo dice al modello esplicitamente: "Tu sei questo (System)" e "L'utente ha detto questo (User)"
+            final_messages = [
+                {"role": "system", "content": system_instructions}
+            ] + messages_payload + [
+                {"role": "user", "content": final_user_content}
+            ]
+
+            self.messages.append(ChatMessage(id=str(uuid.uuid4()), role="assistant", content="", sources=sources, debug_md=debug_md))
             yield rx.scroll_to("chat_bottom")
 
             full_resp = ""
             if llm_client:
-                try:
-                    stream = llm_client.chat.completions.create(
-                        model=LLM_MODEL_NAME,
-                        messages=messages_payload,
-                        temperature=0.1,
-                        stream=True,
-                    )
-                    for chunk in stream:
-                        delta = chunk.choices[0].delta
-                        if delta and getattr(delta, "content", None):
-                            full_resp += delta.content
-
-                            if len(full_resp) > MAX_ASSISTANT_CHARS:
-                                full_resp = full_resp[:MAX_ASSISTANT_CHARS] + "\n\n*(Risposta troncata per limiti UI)*"
-                                cleaner = globals().get("strip_id_leaks")
-                                self.messages[-1].content = cleaner(full_resp) if callable(cleaner) else full_resp
-                                yield
-                                break
-
-                            self.messages[-1].content = strip_id_leaks(full_resp)
-                            yield
-                except Exception as e:
-                    error_msg = str(e)
-                    print(f"❌ Error from LLM: {error_msg}")
-                    self.messages[-1].content = f"⚠️ Errore LLM: {error_msg}. Controlla i log di LM Studio."
-            else:
-                self.messages[-1].content = "⚠️ Client LLM non inizializzato."
+                # Usiamo final_messages invece di messages_payload modificato in place
+                stream = llm_client.chat.completions.create(
+                    model=LLM_MODEL_NAME, messages=final_messages, temperature=0.1, stream=True
+                )
+                for chunk in stream:
+                    delta = chunk.choices[0].delta
+                    if delta and getattr(delta, "content", None):
+                        full_resp += delta.content
+                        self.messages[-1].content = strip_id_leaks(full_resp)
+                        yield
+            else: 
+                self.messages[-1].content = "⚠️ LLM non inizializzato."
 
         finally:
-            self.refresh_gpu()
             self.is_processing = False
-
+            self.refresh_gpu()
 
 # =========================
 # 🎨 UI COMPONENTS
@@ -1208,7 +1485,6 @@ def source_badge(text: str, color: str, icon: str):
 
 def message_ui(msg: ChatMessage):
     is_bot = msg.role == "assistant"
-
     bg_color = rx.cond(is_bot, rx.color("gray", 3), rx.color("indigo", 9))
     text_color = rx.cond(is_bot, rx.color("gray", 12), "white")
     align_self = rx.cond(is_bot, "start", "end")
@@ -1224,134 +1500,162 @@ def message_ui(msg: ChatMessage):
                 ),
                 rx.text(rx.cond(is_bot, "Financial AI", "Tu"), weight="bold", size="2"),
                 rx.spacer(),
+                # Pulsante "Info" in alto a destra nel messaggio
                 rx.cond(
                     is_bot & (msg.sources.length() > 0),
-                    rx.badge(
+                    rx.button(
                         rx.hstack(
-                            rx.text(msg.sources.length()),
-                            rx.text(" Fonti"),
-                            spacing="1",
-                            align_items="center",
+                            rx.icon("info", size=14),
+                            rx.text("Dettagli Ricerca", size="1"),
+                            spacing="2",
                         ),
-                        color_scheme="green",
-                        variant="surface",
+                        variant="soft",
+                        color_scheme="gray",
+                        size="1",
+                        on_click=lambda: State.open_sources_audit(msg.id),
                     ),
+                    rx.box(),
                 ),
                 width="100%",
                 align_items="center",
                 spacing="2",
             ),
-
+            # Contenuto del Messaggio
             rx.markdown(
                 msg.content,
                 width="100%",
                 overflow_wrap="anywhere",
                 word_break="break-word",
             ),
-
+            
+            # Badge rapidi sotto il testo (Opzionale, richiama la funzione helper)
             rx.cond(
-                    is_bot & ((msg.sources.length() > 0) | (msg.debug_md.length() > 0)),
-                    rx.accordion.root(
-                    rx.cond(
-                        msg.sources.length() > 0,
-                        rx.accordion.item(
-                            header=rx.hstack(
-                                rx.icon("book-open", size=14),
-                                rx.text("Fonti Analizzate", size="1"),
-                                align_items="center",
-                                spacing="2",
-                            ),
-                            content=rx.vstack(
-                                rx.foreach(
-                                    msg.sources,
-                                    lambda s: rx.card(
-                                        rx.vstack(
-                                            rx.hstack(
-                                                rx.icon("file-text", size=14),
-                                                rx.text(s.filename, weight="bold", size="1"),
-                                                rx.spacer(),
-                                                rx.badge(f"Pag {s.page}", color_scheme="gray", variant="soft"),
-                                                rx.badge(s.type, color_scheme="blue", variant="soft"),
-                                                rx.cond(
-                                                    (s.tier != "") & (s.tier != None),
-                                                    source_badge(s.tier, "green", "layers"),
-                                                ),
-                                                width="100%",
-                                                align_items="center",
-                                            ),
-                                            rx.text(
-                                                rx.cond(
-                                                    s.content.length() > 320,
-                                                    s.content[:320] + "…",
-                                                    s.content,
-                                                ),
-                                                size="1",
-                                                color="gray",
-                                                truncate=True,
-                                            ),
-                                            rx.cond(
-                                                s.graph_context.length() > 0,
-                                                rx.flex(
-                                                    rx.text("Graph:", size="1", weight="bold", color="gray"),
-                                                    rx.foreach(
-                                                        s.graph_context,
-                                                        lambda e: rx.badge(
-                                                            e.name,
-                                                            color_scheme="purple",
-                                                            variant="surface",
-                                                            size="1",
-                                                        ),
-                                                    ),
-                                                    spacing="1",
-                                                    wrap="wrap",
-                                                    margin_top="4px",
-                                                ),
-                                            ),
-                                            spacing="1",
-                                            align_items="start",
-                                        ),
-                                        size="1",
-                                        width="100%",
-                                    ),
-                                ),
-                                spacing="2",
-                                width="100%",
-                            ),
-                        ),
-                    ),
-
-                    rx.cond(
-                        msg.debug_md.length() > 0,
-                        rx.accordion.item(
-                            header=rx.hstack(
-                                rx.icon("search", size=14),
-                                rx.text("Audit", size="1"),
-                                align_items="center",
-                                spacing="2",
-                            ),
-                            content=rx.box(
-                                rx.markdown(
-                                    msg.debug_md,
-                                    width="100%",
-                                    overflow_wrap="anywhere",
-                                    word_break="break-word",
-                                ),
-                                width="100%",
-                            ),
-                        ),
-                    ),
-
-                    collapsible=True,
-                    type="single",
-                    width="100%",
-                    margin_top="1em",
-                ),
+                is_bot & (msg.sources.length() > 0),
+                render_inline_sources(msg)
             ),
 
-            align_items="start",
-            spacing="3",
+            spacing="2",
             width="100%",
         ),
+
+        # ---- Inline popup "Fonti + Audit" sotto la risposta LLM ----
+        rx.cond(
+            is_bot & ((msg.sources.length() > 0) | (msg.debug_md.length() > 0)),
+            rx.box(
+                # barra azioni (Pulsanti Fonti / Audit)
+                rx.hstack(
+                    rx.button(
+                        rx.hstack(
+                            rx.icon("book-open", size=14),
+                            rx.text("Fonti", size="1"),
+                            rx.badge(rx.text(msg.sources.length()), color_scheme="green", variant="soft"),
+                            spacing="2",
+                            align_items="center",
+                        ),
+                        size="1",
+                        variant="soft",
+                        on_click=lambda: State.toggle_inline_sources(msg.id),
+                    ),
+                    rx.button(
+                        rx.hstack(
+                            rx.icon("shield-check", size=14),
+                            rx.text("Audit", size="1"),
+                            spacing="2",
+                            align_items="center",
+                        ),
+                        size="1",
+                        variant="soft",
+                        on_click=lambda: State.toggle_inline_audit(msg.id),
+                    ),
+                    rx.spacer(),
+                    spacing="2",
+                    width="100%",
+                    margin_top="0.6em",
+                ),
+
+                # --- PANNELLO ESPANSO ---
+                rx.cond(
+                    State.inline_open_for == msg.id,
+                    rx.box(
+                        rx.cond(
+                            State.inline_tab == "sources",
+                            
+                            # === SEZIONE FONTI (FIXATA: NESSUN LOOP SU STATE.MESSAGES) ===
+                            rx.scroll_area(
+                                rx.vstack(
+                                    rx.text("📚 Fonti Documentali correlate:", font_weight="bold", size="2", margin_bottom="0.5em"),
+                                    rx.foreach(
+                                        msg.sources,
+                                        lambda s: rx.card(
+                                            rx.vstack(
+                                                rx.hstack(
+                                                    rx.badge(s.tier, color_scheme="red", variant="soft"),
+                                                    rx.badge(s.db_origin, color_scheme="violet", variant="outline"),
+                                                    rx.text(f"{s.filename}", size="1", weight="bold"),
+                                                    rx.spacer(),
+                                                    rx.text(f"Pag. {s.page}", size="1"),
+                                                    width="100%",
+                                                ),
+                                                rx.text(s.content, size="1", line_clamp=3, font_style="italic", color_scheme="gray"),
+                                                spacing="1",
+                                                width="100%",
+                                            ),
+                                            variant="ghost",
+                                            width="100%",
+                                            margin_bottom="0.5em",
+                                        )
+                                    ),
+                                    spacing="2",
+                                    width="100%",
+                                ),
+                                height="260px",
+                                type="always",
+                            ),
+                            
+                            # === SEZIONE AUDIT ===
+                            rx.box(
+                                rx.heading("Audit & Reasoning", size="3", margin_bottom="0.5em"),
+                                rx.scroll_area(
+                                    rx.markdown(
+                                        msg.debug_md,
+                                        width="100%",
+                                        overflow_wrap="anywhere",
+                                        word_break="break-word",
+                                    ),
+                                    height="260px",
+                                    type="always",
+                                ),
+                                width="100%",
+                            ),
+                        ),
+
+                        # Footer del pannello (Pulsante Chiudi)
+                        rx.hstack(
+                            rx.spacer(),
+                            rx.button(
+                                "Chiudi",
+                                size="1",
+                                variant="ghost",
+                                on_click=State.close_inline_panel,
+                            ),
+                            width="100%",
+                            margin_top="0.5em",
+                        ),
+
+                        border=f"1px solid {rx.color('gray', 5)}",
+                        border_radius="12px",
+                        padding="0.8em",
+                        margin_top="0.6em",
+                        bg=rx.color("gray", 1),
+                        width="100%",
+                    ),
+                    rx.box(), # Else block del pannello espanso (vuoto)
+                ),
+                width="100%",
+            ),
+            rx.box(), # Else block del pulsante espansione (vuoto)
+        ),
+
         bg=bg_color,
         color=text_color,
         padding="1em",
@@ -1363,6 +1667,43 @@ def message_ui(msg: ChatMessage):
     )
 
 
+def render_inline_sources(msg: ChatMessage):
+    """Visualizza i badge sintetici delle fonti sotto il messaggio."""
+    return rx.flex(
+        rx.foreach(
+            msg.sources,
+            lambda s: rx.badge(
+                rx.hstack(
+                    rx.icon("database", size=12),
+                    # FIX: Passiamo i valori come argomenti separati a rx.text
+                    # invece di usare una f-string che può causare errori su Var
+                    rx.text(s.db_origin, ": ", s.filename, " (p.", s.page, ")", size="1"),
+                    align_items="center",
+                    spacing="1",
+                ),
+                variant="soft",
+                color_scheme="indigo",
+                margin_right="0.5em",
+                margin_bottom="0.2em",
+                cursor="pointer",
+                # Cliccando sul badge si apre il pannello dettagli
+                on_click=lambda: State.toggle_inline_sources(msg.id), 
+            )
+        ),
+        wrap="wrap",
+        margin_top="0.5em",
+    )
+
+def render_inline_audit(msg: ChatMessage):
+    """Visualizza il log di ragionamento (Audit) sotto il messaggio."""
+    return rx.box(
+        rx.markdown(msg.debug_md),
+        background_color="#FFFBEB",
+        padding="1rem",
+        border_radius="md",
+        margin_top="0.5rem",
+        border_left="4px solid #F6AD55",
+    )
 
 
 
@@ -1419,6 +1760,81 @@ def index():
                 width="100%",
                 text_align="center",
                 flex_shrink="0",
+            ),
+            
+            # --- Popup Fonti/Audit (una sola volta, fuori dal foreach dei messaggi) ---
+            rx.dialog.root(
+                rx.dialog.content(
+                    rx.dialog.title(State.modal_title),
+                    rx.dialog.description("Fonti e audit della risposta."),
+                    rx.divider(),
+
+                    # ====== FONTI (Visualizzazione pulita e mirata) ======
+                    rx.cond(
+                        State.modal_sources.length() > 0,
+                        rx.scroll_area(
+                            rx.vstack(
+                                rx.foreach(
+                                    State.modal_sources,
+                                    lambda s: rx.card(
+                                        rx.vstack(
+                                            rx.hstack(
+                                                rx.badge(s.tier, color_scheme="tomato", variant="surface"),
+                                                rx.badge(s.db_origin, color_scheme="plum", variant="outline"),
+                                                rx.text(f"Doc: {s.filename}", weight="bold", size="2"),
+                                                width="100%",
+                                                justify="between",
+                                            ),
+                                            rx.text(s.content, size="1", line_clamp=3),
+                                            rx.hstack(
+                                                rx.text(f"Pagina: {s.page}", size="1", color_scheme="gray"),
+                                                rx.spacer(),
+                                                rx.text(f"Score: {s.score}", size="1", color_scheme="gray"),
+                                                width="100%",
+                                            ),
+                                            spacing="2",
+                                        ),
+                                        width="100%",
+                                        margin_bottom="2",
+                                    )
+                                ),
+                                spacing="2",
+                                width="100%",
+                            ),
+                            height="400px",
+                            type="always",
+                        ),
+                        rx.center(rx.text("Nessuna fonte trovata per questo messaggio.", color="gray")),
+                    ),
+
+                    rx.divider(),
+
+                    # ====== AUDIT ======
+                    rx.cond(
+                        State.modal_debug_md.length() > 0,
+                        rx.box(
+                            rx.heading("Audit", size="3"),
+                            rx.markdown(
+                                State.modal_debug_md,
+                                width="100%",
+                                overflow_wrap="anywhere",
+                                word_break="break-word",
+                            ),
+                            width="100%",
+                        ),
+                        rx.text("Nessun audit disponibile.", color="gray"),
+                    ),
+
+                    rx.hstack(
+                        rx.spacer(),
+                        rx.button("Chiudi", variant="soft", on_click=State.close_sources_audit),
+                        width="100%",
+                        margin_top="1em",
+                    ),
+
+                    max_width="900px",
+                    width="90vw",
+                ),
             ),
 
             # Chat scroll area

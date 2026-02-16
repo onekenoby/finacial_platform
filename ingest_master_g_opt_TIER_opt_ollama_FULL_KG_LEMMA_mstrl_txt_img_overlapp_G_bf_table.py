@@ -3592,73 +3592,27 @@ def extract_pdf_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
 
 def is_page_math_heavy_or_broken(text: str) -> bool:
     """
-    Rilevatore Universale per Vision AI.
-    Attiva la Visione se la pagina contiene:
-    1. Testo corrotto (artefatti PDF)
-    2. Tabelle numeriche (Table Hunter)
-    3. Qualsiasi formula matematica/statistica/finanziaria (Generic Math)
+    Rileva se la pagina contiene formule complesse che PyMuPDF ha rotto
+    o se è densa di matematica che richiede LaTeX.
     """
     if not text: return False
     
-    # --- 1. RILEVAMENTO CORRUZIONE (Fix Layout Rotti) ---
-    # "(cid:" indica font mancanti, "2C0D" è l'errore specifico del tuo PDF
+    # 1. Rileva artefatti di codifica PDF (il problema che hai avuto col WACC)
     if "(cid:" in text or "2C0D" in text: 
         return True
-    
-    # Simboli spesso usati al posto di linee/frazioni nei PDF rotti
+        
+    # 2. Rileva simboli di corruzione comuni nelle formule
+    # Spesso le linee di frazione diventano caratteri strani
     if text.count("•") > 5 or text.count("—") > 5 or text.count("˜") > 3:
         return True
 
-    # --- 2. TABLE HUNTER (Cacciatore di Tabelle) ---
-    # Se una pagina è "piena di numeri", è una tabella.
-    digits = sum(c.isdigit() for c in text)
-    chars = len(text)
-    if chars > 100:
-        density = digits / chars
-        # Soglia 15%: se 1 carattere su 7 è un numero, è quasi sicuramente una tabella/bilancio
-        if density > 0.15:
-            print(f"   📊 Table Hunter Triggered: densità numeri {density:.2f}")
-            return True
-
-    # --- 3. UNIVERSAL MATH DETECTOR (Keyword & Simboli) ---
-    
-    text_lower = text.lower()
-
-    # A) Keyword Generiche (Italiano + Inglese)
-    # Non cerchiamo "WACC", ma le parole che compongono QUALSIASI ragionamento quantitativo.
-    universal_keywords = [
-        # Struttura
-        "formula", "equation", "equazione", "theorem", "teorema", "lemma", "proof", "dimostrazione",
-        # Operazioni / Calcolo
-        "integral", "integrale", "derivative", "derivata", "logarithm", "logaritmo", "summation", "sommatoria",
-        "matrix", "matrice", "vector", "vettore",
-        # Statistica
-        "variance", "varianza", "deviation", "deviazione", "correlation", "correlazione", 
-        "regression", "regressione", "distribution", "distribuzione", "confidence", "confidenza",
-        # Finanza
-        "discount", "sconto", "yield", "rendimento", "compounding", "capitalization", "amortization", "ammortamento",
-        "present value", "future value", "npv", "van", "irr", "tir", "cash flow", "flusso",
-        # Simboli scritti a parole
-        "sigma", "alpha", "beta", "gamma", "delta", "theta", "lambda"
-    ]
-
-    # Se trovi anche solo UNA di queste parole tecniche, attiva la Vision per sicurezza.
-    # (Usiamo un set per velocità e rimuoviamo duplicati)
-    if any(k in text_lower for k in universal_keywords):
-        return True
-
-    # B) Rilevamento Simboli Matematici (Regex)
-    # Spesso i PDF hanno i simboli matematici nel layer testo anche se la formattazione è rotta.
-    # Cerchiamo: Operatori logici, lettere greche, simboli di calcolo (∑, ∫, ∂, √, ecc.)
-    math_symbols = re.compile(r"[∑∏∫√∂∇∆∀∃∈∉⊆⊂∪∩≠≈≤≥±∓∞∝∠⊥∥]")
-    if math_symbols.search(text):
+    # 3. Rileva keyword matematiche forti
+    # Se c'è "WACC =" o "Equation", vogliamo vederla bene in LaTeX
+    math_triggers = ["WACC", "CAPM", "Black-Scholes", "Equation", "Formula", "Theorem", "Teorema"]
+    # Controlliamo se c'è una trigger word E se il testo non è lunghissimo (evitiamo libri interi)
+    if any(t in text for t in math_triggers) and len(text) < 3000:
         return True
         
-    # C) Pattern "Variabile = Numero" (es. "r = 5%", "g = 0.02")
-    # Tipico delle liste di parametri prima di una formula
-    if re.search(r"\b[a-zA-Z0-9_]{1,4}\s*=\s*\d", text):
-        return True
-
     return False
 
 # ==============================================================================

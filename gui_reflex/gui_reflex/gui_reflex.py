@@ -1238,7 +1238,7 @@ def build_system_instructions(intent: str) -> str:
     if intent == "formula":
         base += "\nINTENT: FORMULA. Prioritize formula fidelity. Reconstruct split formulas across chunks.\n"
     elif intent == "table":
-        base += "\nINTENT: TABLE. Reconstruct the table in Markdown. Enumerate ALL rows/columns explicitly present. ZERO generic filler.\n"
+        base += "\nINTENT: TABLE. The user wants the FULL DATA. Do NOT summarize. Output the complete Markdown table even if it is long.\n"
     elif intent == "chart":
         base += "\nINTENT: CHART/DATA. Extract explicit numbers/trends only. No estimation.\n"
 
@@ -1620,7 +1620,7 @@ class State(rx.State):
                     extra_body={
                         "options": {
                             "num_ctx": 8192,       # <--- ESTENDE LA MEMORIA (Evita tagli documenti)
-                            "num_predict": 1024,   # Lunghezza massima risposta
+                            "num_predict": 4096,   # Lunghezza massima risposta
                             "repeat_penalty": 1.1  # Riduce le ripetizioni
                         }
                     }
