@@ -271,9 +271,9 @@ def ensure_inbox_structure(inbox_dir: str):
 MIN_ENTITY_DENSITY = int(os.getenv("MIN_ENTITY_DENSITY", "1"))
 MIN_FIN_KEYWORDS = int(os.getenv("MIN_FIN_KEYWORDS", "1"))
 
-KG_TEXT_MAX_CHARS = int(os.getenv("KG_TEXT_MAX_CHARS", "2000"))   # chars sent to KG model per page
+KG_TEXT_MAX_CHARS = int(os.getenv("KG_TEXT_MAX_CHARS", "1500"))   # chars sent to KG model per page
 KG_MAX_TRIPLES = int(os.getenv("KG_MAX_TRIPLES", "50"))           # 10 soft cap (sanitize already caps)
-KG_TIMEOUT = int(os.getenv("KG_TIMEOUT", "120"))                   # seconds per KG task/page
+KG_TIMEOUT = int(os.getenv("KG_TIMEOUT", "300"))                   # seconds per KG task/page
 
 # Backward-compat aliases (do NOT use in new code)
 KG_CHARS_LIMIT = KG_TEXT_MAX_CHARS
@@ -346,7 +346,7 @@ PDF_TEXT_EXTRACTOR = "fitz"
 # --- Nella sezione A. GESTIONE FORMULE ---
 FULLPAGE_DPI = 110 
 CROP_DPI = 160 
-KG_WORKERS = 2  # Forza l'elaborazione seriale per non saturare la VRAM
+KG_WORKERS = 1  # Forza l'elaborazione seriale per non saturare la VRAM
 kg_executor = ThreadPoolExecutor(max_workers=KG_WORKERS)
 
 CID_RE = re.compile(r"\(cid:\d+\)")
@@ -495,7 +495,7 @@ def ai_gatekeeper_decision(text: str) -> bool:
     # 0.35 è solitamente una buona soglia per "vagamente correlato".
     # 0.50 è "molto correlato".
     # Se il testo parla di "cucinare la pasta", lo score sarà < 0.20.
-    THRESHOLD = 0.38 
+    THRESHOLD = 0.30 
 
     # Debug (opzionale: scommenta per calibrare la soglia)
     if max_score > 0.3:
@@ -1208,7 +1208,7 @@ def force_unload_ollama(model_name: str):
         # --- MODIFICA FONDAMENTALE ---
         # La P5000 ha bisogno di tempo per de-allocare la memoria CUDA
         # 0.5s non bastano. Facciamo 3 secondi. È lento? Sì. Si blocca? No.
-        time.sleep(3.0) 
+        time.sleep(2.0) 
         
     except Exception:
         pass
@@ -2292,77 +2292,57 @@ def canonicalize_edges(edges: list[dict]) -> list[dict]:
     return out
 
 def _normalize_graph_schema(js):
-    if js is None:
-        return None
+    """Versione Hardened: Garantisce la presenza di ID e Liste per Neo4j."""
+    if js is None: return None
     if isinstance(js, list):
-        return {"nodes": js, "edges": []}
-    if not isinstance(js, dict):
-        return None
+        js = {"nodes": js, "edges": []}
+    if not isinstance(js, dict): return None
 
     g = dict(js)
-
-    # top-level aliases
-    if "nodes" not in g:
-        for k in ("entities", "entity", "concepts", "items"):
-            if k in g and isinstance(g[k], list):
-                g["nodes"] = g[k]
-                break
-    if "edges" not in g:
-        for k in ("relationships", "relations", "links"):
-            if k in g and isinstance(g[k], list):
-                g["edges"] = g[k]
-                break
-        g.setdefault("edges", [])
-
-    # node aliases
+    # Uniforma chiavi dei nodi
+    raw_nodes = g.get("nodes") or g.get("entities") or g.get("concepts") or []
     nnodes = []
-    for n in (g.get("nodes") or []):
-        if not isinstance(n, dict):
-            continue
+    for n in raw_nodes:
+        if not isinstance(n, dict): continue
         x = dict(n)
-        if "label" not in x and "name" in x:
-            x["label"] = x["name"]
-        if "type" not in x and "category" in x:
-            x["type"] = x["category"]
-        if "id" not in x:
-            t = (x.get("type") or "Entity").strip()
-            l = (x.get("label") or "").strip()
-            x["id"] = f"{t}:{l}" if l else f"{t}:{uuid.uuid4().hex[:8]}"
-        if "properties" not in x or not isinstance(x.get("properties"), dict):
-            props = {}
-            for kk, vv in x.items():
-                if kk not in ("id", "label", "type", "properties"):
-                    props[kk] = vv
-            x["properties"] = props
+        # Neo4j MERGE ha bisogno di un ID univoco e non nullo
+        eid = x.get("id") or x.get("name") or x.get("label")
+        if not eid: continue
+        
+        x["id"] = normalize_entity_id(str(eid))
+        x["label"] = str(x.get("label") or x.get("type") or "Entity").upper()
+        x["type"] = _clean_type(x.get("type") or "Entity")
+        
+        # Assicura che le properties siano un dict piatto
+        props = x.get("properties") or {}
+        if not isinstance(props, dict): props = {}
+        # Sposta eventuali chiavi extra in properties
+        for k, v in x.items():
+            if k not in ("id", "label", "type", "properties"):
+                props[k] = v
+        x["properties"] = _flat_props(props)
         nnodes.append(x)
+    
     g["nodes"] = nnodes
-
-    # edge aliases
+    
+    # Uniforma chiavi degli archi
+    raw_edges = g.get("edges") or g.get("relationships") or g.get("relations") or []
     eedges = []
-    for e in (g.get("edges") or []):
-        if not isinstance(e, dict):
-            continue
-        x = dict(e)
-        if "source" not in x:
-            x["source"] = x.get("from") or x.get("src")
-        if "target" not in x:
-            x["target"] = x.get("to") or x.get("dst")
-        if "relation" not in x:
-            x["relation"] = x.get("type") or x.get("predicate") or x.get("rel") or "RELATED_TO"
-        if "properties" not in x or not isinstance(x.get("properties"), dict):
-            props = {}
-            for kk, vv in x.items():
-                if kk not in ("source", "target", "relation", "properties"):
-                    props[kk] = vv
-            x["properties"] = props
-        if x.get("source") and x.get("target"):
-            eedges.append(x)
+    for e in raw_edges:
+        if not isinstance(e, dict): continue
+        s = e.get("source") or e.get("from") or e.get("src")
+        t = e.get("target") or e.get("to") or e.get("dst")
+        r = e.get("relation") or e.get("type") or "RELATED_TO"
+        if s and t:
+            eedges.append({
+                "source": normalize_entity_id(str(s)),
+                "target": normalize_entity_id(str(t)),
+                "relation": _clean_rel(r),
+                "properties": _flat_props(e.get("properties") or {})
+            })
     g["edges"] = eedges
-
     return g
 
-
-from typing import Any, Dict, List, Tuple
 
 def _sanitize_graph(graph: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     if not isinstance(graph, dict):
@@ -2372,62 +2352,68 @@ def _sanitize_graph(graph: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, An
     edges: List[Dict[str, Any]] = []
     seen_nodes = set()
 
-    # --- NODES ---
+    # --- NODES (Mapping Alias & Deduplicazione) ---
     raw_nodes = graph.get("nodes") or graph.get("entities") or graph.get("concepts") or []
-    for n in raw_nodes or []:
-        if not isinstance(n, dict):
-            continue
+    # FIX: Verifica che raw_nodes sia una lista prima di iterare
+    if isinstance(raw_nodes, list):
+        for n in raw_nodes:
+            if not isinstance(n, dict):
+                continue
 
-        nid = n.get("id") or n.get("name") or n.get("label") or n.get("key")
-        label = n.get("label") or n.get("name") or nid
-        ntype = n.get("type") or n.get("kind") or n.get("category") or "Entity"
-        props = n.get("properties") or n.get("metadata") or n.get("attributes") or {}
+            # Mappa id da varie possibili chiavi (name, label, key)
+            nid = n.get("id") or n.get("name") or n.get("label") or n.get("key")
+            label = n.get("label") or n.get("name") or nid
+            ntype = n.get("type") or n.get("kind") or n.get("category") or "Entity"
+            props = n.get("properties") or n.get("metadata") or n.get("attributes") or {}
 
-        if not nid:
-            continue
+            if not nid:
+                continue
 
-        nid = str(nid)
-        if nid in seen_nodes:
-            continue
-        seen_nodes.add(nid)
+            nid = str(nid)
+            if nid in seen_nodes:
+                continue
+            seen_nodes.add(nid)
 
-        if not isinstance(props, dict):
-            props = {}
+            if not isinstance(props, dict):
+                props = {}
 
-        nodes.append({
-            "id": nid,
-            "label": str(label) if label else nid,
-            "type": str(ntype),
-            "properties": props
-        })
+            nodes.append({
+                "id": nid,
+                "label": str(label) if label else nid,
+                "type": str(ntype),
+                "properties": props
+            })
 
-    # --- EDGES ---
+    # --- EDGES (Mapping Alias & Validazione) ---
     raw_edges = graph.get("edges") or graph.get("relationships") or graph.get("relations") or graph.get("links") or []
-    for e in raw_edges or []:
-        if not isinstance(e, dict):
-            continue
+    # FIX: Verifica che raw_edges sia una lista
+    if isinstance(raw_edges, list):
+        for e in raw_edges:
+            if not isinstance(e, dict):
+                continue
 
-        src = e.get("source") or e.get("from") or e.get("src")
-        tgt = e.get("target") or e.get("to") or e.get("dst")
-        rel = e.get("relation") or e.get("type") or e.get("predicate") or e.get("rel") or "RELATED_TO"
-        props = e.get("properties") or e.get("metadata") or e.get("attributes") or {}
+            src = e.get("source") or e.get("from") or e.get("src")
+            tgt = e.get("target") or e.get("to") or e.get("dst")
+            rel = e.get("relation") or e.get("type") or e.get("predicate") or e.get("rel") or "RELATED_TO"
+            props = e.get("properties") or e.get("metadata") or e.get("attributes") or {}
 
-        if not src or not tgt:
-            continue
+            if not src or not tgt:
+                continue
 
-        if not isinstance(props, dict):
-            props = {}
+            if not isinstance(props, dict):
+                props = {}
 
-        edges.append({
-            "source": str(src),
-            "target": str(tgt),
-            "relation": str(rel),
-            "properties": props
-        })
+            edges.append({
+                "source": str(src),
+                "target": str(tgt),
+                "relation": str(rel),
+                "properties": props
+            })
 
-    # hard cap SOLO alla fine
-    return nodes[80], edges[:100]
-    #return nodes[:20], edges[:30]
+    # --- FIX CRITICO: Slicing sicuro invece di indicizzazione fissa ---
+    # Vecchio: return nodes[80], edges[:100] -> Causava IndexError se < 81 nodi
+    # Nuovo: nodes[:80] restituisce fino a 80 nodi o lista vuota se 0
+    return nodes[:80], edges[:100]
 
 
 def flush_neo4j_rows_batch(rows: List[Dict[str, Any]]):
@@ -3092,10 +3078,13 @@ def llm_extract_kg(filename: str, page_no, text: str, model_name: str):
                 {"role": "user", "content": f"Extract entities and relations from this text:\n\n{text}"}
             ],
             format="json", 
+            # Cerca la chiamata chat e modifica le options:
             options={
                 "temperature": 0.0, 
-                "num_predict": 3000, # Abbondante per evitare troncamenti
-                "num_ctx": 4096      # Contesto pieno
+                "num_predict": 800,   # Non serve di più per 15-20 nodi
+                "num_ctx": 2048,      # FONDAMENTALE: ridotto per non saturare la VRAM
+                "top_k": 20,
+                "top_p": 0.9
             }
         )
         
@@ -4349,18 +4338,48 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
                         llm_extract_kg, filename, p_no, text_clean, LLM_MODEL_NAME
                     )
 
-            # Raccolta risultati KG
+            # 3c. Raccolta KG (FIXED: Protezione "list index out of range")
             for p_no, fut in futures_kg.items():
                 try:
-                    res = fut.result(timeout=120) 
-                    if res:
-                        nodes, edges = res
-                        edges = canonicalize_edges_to_verb_object(edges)
-                        for g_idx, _ in pages_map[p_no]:
-                            batch_kg_results[g_idx] = (nodes, edges)
-                except Exception:
-                    pass
-
+                    res = fut.result(timeout=KG_TIMEOUT) 
+                    
+                    # Controllo robusto sul tipo di ritorno
+                    if not res or not isinstance(res, (list, tuple)) or len(res) < 2:
+                        print(f"   ⚠️ KG Skip: Risposta non valida o incompleta a Pagina {p_no}")
+                        continue
+                        
+                    raw_nodes, raw_edges = res
+                    
+                    # Normalizzazione Schema
+                    graph_data = _normalize_graph_schema({"nodes": raw_nodes, "edges": raw_edges})
+                    
+                    if graph_data and (graph_data.get("nodes") or graph_data.get("edges")):
+                        # Sanificazione con slicing sicuro
+                        # La funzione _sanitize_graph ora deve gestire liste vuote internamente
+                        clean_nodes, clean_edges = _sanitize_graph(graph_data)
+                        
+                        # Canonicalizzazione
+                        final_edges = canonicalize_edges_to_verb_object(clean_edges)
+                        
+                        # Validazione Neo4j (essenziale: filtra nodi senza ID)
+                        validated_nodes = [n for n in clean_nodes if isinstance(n, dict) and n.get("id")]
+                        
+                        if validated_nodes:
+                            for g_idx, _, _ in pages_map[p_no]:
+                                batch_kg_results[g_idx] = (validated_nodes, final_edges)
+                            
+                            print(f"   ✅ KG Exploded: {len(validated_nodes)} nodi e {len(final_edges)} archi a Pagina {p_no}")
+                        else:
+                            print(f"   ⚠️ KG Empty: Nessun nodo valido estratto a Pagina {p_no}")
+                            
+                except TimeoutError:
+                    print(f"   ⌛ KG Timeout (Pag {p_no}): Salto estrazione.")
+                    continue
+                except Exception as e:
+                    print(f"   ⚠️ KG Processing Error (Pag {p_no}): {str(e)}")
+                    continue
+                    
+                    
         # 3c. Costruzione Record DB
         for j, ch in enumerate(batch):
             g_idx = i + j

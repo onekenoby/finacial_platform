@@ -13266,7 +13266,7 @@
   },
   "VISITA": {
     "verb": "VISIT",
-    "object": "",
+    "object": "CITY",
     "qualifier": ""
   },
   "REPRESENTS_THREAT_FOR": {
@@ -29362,6 +29362,3276 @@
   "PRACTICES": {
     "verb": "PRACTICE",
     "object": "",
+    "qualifier": ""
+  },
+  "HAS_TENSIONS_WITH": {
+    "verb": "HAVE",
+    "object": "TENSIONS",
+    "qualifier": ""
+  },
+  "COMMUNICATION_WITH": {
+    "verb": "COMMUNICATE",
+    "object": "",
+    "qualifier": "WITH"
+  },
+  "COOPERATION_WITH": {
+    "verb": "COOPERATE",
+    "object": "",
+    "qualifier": "WITH"
+  },
+  "ECONOMIC_DEPENDENCY_ON": {
+    "verb": "DEPEND",
+    "object": "ECONOMY",
+    "qualifier": "ON"
+  },
+  "DOUBLED_DUTIES_ON_GOODS": {
+    "verb": "DOUBLE",
+    "object": "DUTIES",
+    "qualifier": "ON_GOODS"
+  },
+  "IMPOSED_TARIFFS_ON_CHINESE_GOODS": {
+    "verb": "IMPOSE",
+    "object": "TARIFFS",
+    "qualifier": "ON_CHINESE_GOODS"
+  },
+  "LARGEST_EXPORT_PARTNER": {
+    "verb": "BE",
+    "object": "PARTNER",
+    "qualifier": "LARGEST_EXPORT"
+  },
+  "PUNISHED_FOR_BUYING_RUSSIAN_OIL": {
+    "verb": "PUNISH",
+    "object": "BUYING",
+    "qualifier": "FOR_RUSSIAN_OIL"
+  },
+  "SOLE_PURCHASER_OF_IRON_ORE": {
+    "verb": "BE",
+    "object": "PURCHASER",
+    "qualifier": "SOLE_OF_IRON_ORE"
+  },
+  "THREATENED_TO_IMPOSE_TARIFFS_ON": {
+    "verb": "THREATEN",
+    "object": "IMPOSE",
+    "qualifier": "TARIFFS_ON"
+  },
+  "CELEBRATED_BY": {
+    "verb": "CELEBRATE",
+    "object": "PERSON",
+    "qualifier": ""
+  },
+  "COMMEMORATED_BY": {
+    "verb": "COMMEMORATE",
+    "object": "EVENT",
+    "qualifier": ""
+  },
+  "FRIENDSHIP": {
+    "verb": "CONNECT",
+    "object": "RELATION",
+    "qualifier": ""
+  },
+  "POLITICAL_CONTROL": {
+    "verb": "EXERCISE",
+    "object": "CONTROL",
+    "qualifier": ""
+  },
+  "POTENTIAL_PEACE_INVOLVEMENT": {
+    "verb": "SEEK",
+    "object": "PEACE",
+    "qualifier": "INVOLVEMENT"
+  },
+  "COMPETIZIONE_CON": {
+    "verb": "COMPETE",
+    "object": "",
+    "qualifier": "CON"
+  },
+  "DATI_DA": {
+    "verb": "PROVIDE",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "ELABORAZIONI": {
+    "verb": "PROCESS",
+    "object": "",
+    "qualifier": ""
+  },
+  "ESPORTA_VERSO": {
+    "verb": "EXPORT",
+    "object": "GOODS",
+    "qualifier": "VERSO"
+  },
+  "GUIDA_PER_LA_POLITICA_ECONOMICA": {
+    "verb": "GUIDE",
+    "object": "POLICY",
+    "qualifier": ""
+  },
+  "HA_FIRMATO_UN_ARTICOLO_SU": {
+    "verb": "SIGN",
+    "object": "ARTICLE",
+    "qualifier": "SU"
+  },
+  "PRESIEDE": {
+    "verb": "CHAIR",
+    "object": "",
+    "qualifier": ""
+  },
+  "PRIVILEGIA": {
+    "verb": "GRANT",
+    "object": "PRIVILEGE",
+    "qualifier": ""
+  },
+  "PROMESSA_DI_SVOLTA_SUI": {
+    "verb": "MAKE",
+    "object": "PROMISE",
+    "qualifier": "SUI"
+  },
+  "SUPERATO": {
+    "verb": "SURPASS",
+    "object": "",
+    "qualifier": ""
+  },
+  "CAPITALE_DI": {
+    "verb": "BE",
+    "object": "CAPITAL",
+    "qualifier": ""
+  },
+  "GOVERNATO_DA": {
+    "verb": "GOVERN",
+    "object": "PERSON",
+    "qualifier": ""
+  },
+  "SI_SVOLGE_IN": {
+    "verb": "TAKE_PLACE",
+    "object": "LOCATION",
+    "qualifier": ""
+  },
+  "ECONOMIC_RELATIONSHIP_WITH": {
+    "verb": "HAVE",
+    "object": "RELATIONSHIP",
+    "qualifier": ""
+  },
+  "EQUALS_TO": {
+    "verb": "EQUAL",
+    "object": "",
+    "qualifier": "TO"
+  },
+  "APPROCCIARE_A": {
+    "verb": "APPROACH",
+    "object": "TARGET",
+    "qualifier": "A"
+  },
+  "CREARE_VOLATILIT_PER_INTERO_PORTAFOGLIO": {
+    "verb": "CREATE",
+    "object": "PORTFOLIO",
+    "qualifier": "VOLATILITY"
+  },
+  "CRESCITA_DI": {
+    "verb": "GROW",
+    "object": "UNKNOWN",
+    "qualifier": "DI"
+  },
+  "INFLUENZA_SU_RISCHIO": {
+    "verb": "INFLUENCE",
+    "object": "RISK",
+    "qualifier": "SU"
+  },
+  "PERMANERE_ANCHE_IN": {
+    "verb": "REMAIN",
+    "object": "UNKNOWN",
+    "qualifier": "IN"
+  },
+  "SPARISCE_IN": {
+    "verb": "DISAPPEAR",
+    "object": "UNKNOWN",
+    "qualifier": "IN"
+  },
+  "UGUALE_A": {
+    "verb": "EQUAL",
+    "object": "UNKNOWN",
+    "qualifier": "A"
+  },
+  "UGUALE_ALLA_MEDIA_PONDERATA_DI": {
+    "verb": "EQUAL",
+    "object": "AVERAGE",
+    "qualifier": "ALLA_MEDIA_PONDERATA_DI"
+  },
+  "BILANCIATO_DA": {
+    "verb": "BALANCE",
+    "object": "",
+    "qualifier": "DA"
+  },
+  "DIVERSAMENTE_DA_ZERO": {
+    "verb": "DIFFER",
+    "object": "ZERO",
+    "qualifier": "DIVERSE"
+  },
+  "DIVERSO_DA_ZERO": {
+    "verb": "DIFFER",
+    "object": "ZERO",
+    "qualifier": ""
+  },
+  "COMBINAZIONE_DI": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "PREFERIREBBE": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "MASSIMO_LIVELLO": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "LIVELLO"
+  },
+  "COMPONENT_OF": {
+    "verb": "CONTAIN",
+    "object": "",
+    "qualifier": ""
+  },
+  "DEFINES_EFFICIENT_INVESTMENT_AS_COMBINATION_OF": {
+    "verb": "DEFINE",
+    "object": "COMBINATION",
+    "qualifier": "OF"
+  },
+  "MAXIMIZES_SHARPE_RATIO": {
+    "verb": "MAXIMIZE",
+    "object": "SHARPE_RATIO",
+    "qualifier": ""
+  },
+  "SHOWS_COMBINATION_OF": {
+    "verb": "SHOW",
+    "object": "COMBINATION",
+    "qualifier": "OF"
+  },
+  "COMBINE_TO_ACHIEVE_EFFICIENT_INVESTMENT": {
+    "verb": "COMBINE",
+    "object": "INVESTMENT",
+    "qualifier": "EFFICIENT"
+  },
+  "HAS_ZERO": {
+    "verb": "HAVE",
+    "object": "AMOUNT",
+    "qualifier": ""
+  },
+  "INCREASES_WITH_INCREASING_VOLATILITY": {
+    "verb": "INCREASE",
+    "object": "VOLATILITY",
+    "qualifier": "WITH_INCREASING"
+  },
+  "TRADE_OFF": {
+    "verb": "MAKE",
+    "object": "TRADE_OFF",
+    "qualifier": ""
+  },
+  "COMPOSIZIONE": {
+    "verb": "FORM",
+    "object": "INVESTMENT_QUOTAS",
+    "qualifier": ""
+  },
+  "QUOTA_INVESTIMENTO": {
+    "verb": "INVEST",
+    "object": "QUOTE",
+    "qualifier": ""
+  },
+  "IS_A_TYPE_OF": {
+    "verb": "BE",
+    "object": "",
+    "qualifier": ""
+  },
+  "REPRESENTS_THE_CONSTRAINT_FOR": {
+    "verb": "LIMIT",
+    "object": "",
+    "qualifier": ""
+  },
+  "REPRESENTS_THE_PROPORTION_OF": {
+    "verb": "DESCRIBE",
+    "object": "RATIO",
+    "qualifier": ""
+  },
+  "USED_TO_DETERMINE": {
+    "verb": "DETERMINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "QUOTA_INVESTITA_IN": {
+    "verb": "INVEST",
+    "object": "INDUSTRY",
+    "qualifier": "IN"
+  },
+  "AUMENTA_AL_CRESCERE_DEL_PREMIO_AL_RISCHIO": {
+    "verb": "INCREASE",
+    "object": "RISK",
+    "qualifier": "GROWTH"
+  },
+  "CURVA_CHE_SALE_CON_MAGGIORE_PENDENZA_RISPETTO_AL_F": {
+    "verb": "RISE",
+    "object": "SLOPE",
+    "qualifier": "GREATER"
+  },
+  "DIMINUISCE_ALL_AUMENTARE": {
+    "verb": "DECREASE",
+    "object": "INCREASE",
+    "qualifier": ""
+  },
+  "DIMINUISCE_ALL_AUMENTARE_DELLA_VARIANZA_DEL_RENDIM": {
+    "verb": "DECREASE",
+    "object": "VARIATION",
+    "qualifier": "OF_RETURNS"
+  },
+  "MODIFICA_INCLINAZIONE_CI": {
+    "verb": "MODIFY",
+    "object": "SLOPE",
+    "qualifier": ""
+  },
+  "PUNTO_DI_TANGENZA_TRA_CURVA_INDIFFERENZA_E_CAL": {
+    "verb": "TOUCH",
+    "object": "CURVE",
+    "qualifier": "BETWEEN_DIFFERENCE_AND_CAL"
+  },
+  "TANGENZA_TRA_CURVA_INDIFFERENZA_E_CAL": {
+    "verb": "TOUCH",
+    "object": "CURVES",
+    "qualifier": ""
+  },
+  "CANNOT_REPLICATE": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "BETWEEN_THE_ISSUER_S_ASSETS_AND_"
+  },
+  "CAN_REPLICATE": {
+    "verb": "MEET",
+    "object": "",
+    "qualifier": ""
+  },
+  "HAS_A_SEPARATION_BETWEEN_THE_ISSUER_S_ASSETS_AND_T": {
+    "verb": "HAVE",
+    "object": "SEPARATION",
+    "qualifier": ""
+  },
+  "HAS_NO_SEPARATION_BETWEEN_THE_ISSUER_S_ASSETS_AND_": {
+    "verb": "HAVE",
+    "object": "",
+    "qualifier": "SEPARATION_BETWEEN_THE_ISSUER_S_ASSETS_AND_"
+  },
+  "MITIGATED_BY_COLLATERAL": {
+    "verb": "REDUCE",
+    "object": "RISK",
+    "qualifier": ""
+  },
+  "DOTATO_DI": {
+    "verb": "EQUIP",
+    "object": "FEATURE",
+    "qualifier": ""
+  },
+  "AIUTARE": {
+    "verb": "HELP",
+    "object": "",
+    "qualifier": ""
+  },
+  "COINVOLGERE": {
+    "verb": "ENGAGE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONFRONTO": {
+    "verb": "CONFRONT",
+    "object": "",
+    "qualifier": ""
+  },
+  "DARE": {
+    "verb": "GIVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "DEFINIRE": {
+    "verb": "DEFINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "ELIMINARE": {
+    "verb": "REMOVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FAVORIRE": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "LIMITARE": {
+    "verb": "LIMIT",
+    "object": "",
+    "qualifier": ""
+  },
+  "METTERE_IN_ATTO": {
+    "verb": "IMPLEMENT",
+    "object": "",
+    "qualifier": ""
+  },
+  "REALIZZARE": {
+    "verb": "REALIZE",
+    "object": "",
+    "qualifier": ""
+  },
+  "APPARTENENTE_A": {
+    "verb": "BELONGS",
+    "object": "GROUP",
+    "qualifier": ""
+  },
+  "ASSICURA": {
+    "verb": "INSURE",
+    "object": "",
+    "qualifier": ""
+  },
+  "DATA_DI_VALORE": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "PAGAMENTO_ASSOCIATO": {
+    "verb": "SIGN",
+    "object": "AGREEMENT",
+    "qualifier": ""
+  },
+  "TIPO_DI_BARRIERA": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "COLLABORAZIONE": {
+    "verb": "COOPERATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PAGAMENTO": {
+    "verb": "PAY",
+    "object": "",
+    "qualifier": ""
+  },
+  "PRODUZIONE": {
+    "verb": "PRODUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "REGOLAMENTAZIONE": {
+    "verb": "REGULATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CI_D_SOLO_I": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "I"
+  },
+  "DA_PRENDERE_O_DA": {
+    "verb": "TAKE",
+    "object": "",
+    "qualifier": "O_DA"
+  },
+  "DOVRANNO_ESSERE_ABBINATI_AD_UNA": {
+    "verb": "MATCH",
+    "object": "",
+    "qualifier": "AD_UNA"
+  },
+  "DOVREMO_ANDARE_A_CONFRONTARE_CON": {
+    "verb": "COMPARE",
+    "object": "",
+    "qualifier": "CON"
+  },
+  "INFORMAZIONI_SULLA": {
+    "verb": "PROVIDE",
+    "object": "INFORMATION",
+    "qualifier": "SULLA"
+  },
+  "NON_CAPITA_SEMPRE": {
+    "verb": "OCCUR",
+    "object": "",
+    "qualifier": "SEMPRE"
+  },
+  "PERMETTE_DI_AVERE": {
+    "verb": "ALLOW",
+    "object": "",
+    "qualifier": "DI_AVERE"
+  },
+  "RIBASANDO_A_100_LE_DUE_SERIE_DI": {
+    "verb": "REBASE",
+    "object": "",
+    "qualifier": "A_100_LE_DUE_SERIE_DI"
+  },
+  "RICOSTRUIRLO_SULLA_BASE_DEI_DETTAGLI": {
+    "verb": "RECONSTRUCT",
+    "object": "",
+    "qualifier": "SULLA_BASE_DEI_DETTAGLI"
+  },
+  "IS_CALCULATED_FOR": {
+    "verb": "CALCULATE",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "SUPERVISOR": {
+    "verb": "SUPERVISE",
+    "object": "THESIS",
+    "qualifier": ""
+  },
+  "APPLICATION": {
+    "verb": "APPLY",
+    "object": "",
+    "qualifier": ""
+  },
+  "VERIFICATION": {
+    "verb": "VERIFY",
+    "object": "",
+    "qualifier": ""
+  },
+  "CATEGORY": {
+    "verb": "DESCRIBE",
+    "object": "CATEGORY",
+    "qualifier": ""
+  },
+  "MANAGEMENT": {
+    "verb": "LEAD",
+    "object": "ORGANIZATION",
+    "qualifier": ""
+  },
+  "ORGANIZATION": {
+    "verb": "FORM",
+    "object": "GROUP",
+    "qualifier": ""
+  },
+  "TIME_HORIZON": {
+    "verb": "DEFINE",
+    "object": "PERIOD",
+    "qualifier": ""
+  },
+  "EXPLOITS_DIFFERENCES": {
+    "verb": "EXPLOIT",
+    "object": "DIFFERENCES",
+    "qualifier": ""
+  },
+  "PROVIDES_REFERENCE": {
+    "verb": "PROVIDE",
+    "object": "REFERENCE",
+    "qualifier": ""
+  },
+  "STATO_DI_APPARTENENZA": {
+    "verb": "BELONG",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "CALCOLO": {
+    "verb": "CALCULATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PUNTO_DI_VISTA": {
+    "verb": "CONSIDER",
+    "object": "PERSPECTIVE",
+    "qualifier": ""
+  },
+  "APPROSSIMABILE_A": {
+    "verb": "APPROACH",
+    "object": "TARGET",
+    "qualifier": "A"
+  },
+  "BASIS_FOR_CALCULATION": {
+    "verb": "DETERMINE",
+    "object": "AMOUNT",
+    "qualifier": ""
+  },
+  "ALLOWS_TO_UNDERSTAND": {
+    "verb": "ALLOW",
+    "object": "UNDERSTANDING",
+    "qualifier": ""
+  },
+  "CORRECTS_THE_SIGNIFICANCE_OF": {
+    "verb": "CORRECT",
+    "object": "SIGNIFICANCE",
+    "qualifier": ""
+  },
+  "IS_A_PARAMETER_FOR": {
+    "verb": "BE",
+    "object": "PARAMETER",
+    "qualifier": ""
+  },
+  "IS_A_RESULT_OF": {
+    "verb": "BE",
+    "object": "RESULT",
+    "qualifier": ""
+  },
+  "IS_A_STATISTIC_FOR": {
+    "verb": "BE",
+    "object": "STATISTIC",
+    "qualifier": ""
+  },
+  "REQUIRES_FOR_DETERMINING": {
+    "verb": "REQUIRE",
+    "object": "DETERMINING",
+    "qualifier": ""
+  },
+  "APPROXIMATED_BY": {
+    "verb": "APPROACH",
+    "object": "TARGET",
+    "qualifier": "BY"
+  },
+  "CROSSED": {
+    "verb": "CROSS",
+    "object": "",
+    "qualifier": ""
+  },
+  "TIME_PERIOD_OF": {
+    "verb": "LAST",
+    "object": "PERIOD",
+    "qualifier": ""
+  },
+  "PERFORMED_ON": {
+    "verb": "PERFORM",
+    "object": "",
+    "qualifier": "ON"
+  },
+  "CONTEXT_OF": {
+    "verb": "RELATED",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "CROSSOVER": {
+    "verb": "LINK",
+    "object": "",
+    "qualifier": ""
+  },
+  "PERFORMANCE_ANALYSIS": {
+    "verb": "ANALYZE",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "POTENTIAL_OUTCOME": {
+    "verb": "PREDICT",
+    "object": "RESULT",
+    "qualifier": ""
+  },
+  "TIME_PERIOD": {
+    "verb": "DEFINE",
+    "object": "DURATION",
+    "qualifier": ""
+  },
+  "ALLOWS_FOR": {
+    "verb": "ALLOW",
+    "object": "",
+    "qualifier": "FOR"
+  },
+  "CAN_BE_APPROXIMATED_AS": {
+    "verb": "APPROXIMATE",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "CUTS_BELOW": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": "BELOW"
+  },
+  "DETERMINED_ALONG_WITH": {
+    "verb": "DETERMINE",
+    "object": "EMPTY",
+    "qualifier": "WITH"
+  },
+  "DISTRIBUTION_ANALYZED_USING": {
+    "verb": "ANALYZE",
+    "object": "DISTRIBUTION",
+    "qualifier": "USING"
+  },
+  "USED_TO_ASSESS": {
+    "verb": "USE",
+    "object": "EMPTY",
+    "qualifier": "TO ASSESS"
+  },
+  "HAS_RETURNS": {
+    "verb": "SUPPORT",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "MOVING_AVERAGE": {
+    "verb": "CALCULATE",
+    "object": "",
+    "qualifier": "AVERAGE"
+  },
+  "STARTS_ON": {
+    "verb": "START",
+    "object": "",
+    "qualifier": "ON"
+  },
+  "PREDICTION": {
+    "verb": "PREDICT",
+    "object": "",
+    "qualifier": ""
+  },
+  "APPROXIMATION_TO": {
+    "verb": "APPROACH",
+    "object": "TARGET",
+    "qualifier": "TO"
+  },
+  "TESTED_BY": {
+    "verb": "TEST",
+    "object": "",
+    "qualifier": "BY"
+  },
+  "CHARACTERISTIC_OF": {
+    "verb": "DESCRIBE",
+    "object": "",
+    "qualifier": ""
+  },
+  "TESTATO_SU": {
+    "verb": "TEST",
+    "object": "TOPIC",
+    "qualifier": "SU"
+  },
+  "APPROXIMATED_AS": {
+    "verb": "APPROXIMATE",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "IS_DEPICTED_IN": {
+    "verb": "SHOW",
+    "object": "IMAGE",
+    "qualifier": ""
+  },
+  "APPROXIMATED_TO": {
+    "verb": "APPROACH",
+    "object": "TARGET",
+    "qualifier": "TO"
+  },
+  "SHOWN_IN": {
+    "verb": "PRESENT",
+    "object": "MEDIUM",
+    "qualifier": "IN"
+  },
+  "CAN_BE_ACHIEVED_THROUGH": {
+    "verb": "REACH",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "CUTS": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "IS_MEASURED_BY": {
+    "verb": "MEASURE",
+    "object": "METRIC",
+    "qualifier": ""
+  },
+  "STANDARD_DEVIATION": {
+    "verb": "DESCRIBE",
+    "object": "MEASURE",
+    "qualifier": ""
+  },
+  "VARIANCE": {
+    "verb": "DESCRIBE",
+    "object": "MEASURE",
+    "qualifier": ""
+  },
+  "IS_A_SEGMENT_OF": {
+    "verb": "BE",
+    "object": "SEGMENT",
+    "qualifier": ""
+  },
+  "DEFIN": {
+    "verb": "DEFINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "IMPLICA": {
+    "verb": "IMPLY",
+    "object": "",
+    "qualifier": ""
+  },
+  "RISPECCHIANO": {
+    "verb": "REFLECT",
+    "object": "",
+    "qualifier": ""
+  },
+  "CAN_HAVE": {
+    "verb": "POSSESS",
+    "object": "",
+    "qualifier": ""
+  },
+  "INDEXED_BY": {
+    "verb": "INDEX",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "COEFFICIENT": {
+    "verb": "REDUCE",
+    "object": "INNOVATION",
+    "qualifier": ""
+  },
+  "INNOVATION": {
+    "verb": "REDUCE",
+    "object": "PREVIOUS_VALUE",
+    "qualifier": ""
+  },
+  "PREVIOUS_VALUE": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "IS_CONSIDERED_IN": {
+    "verb": "CONSIDER",
+    "object": "CONTEXT",
+    "qualifier": ""
+  },
+  "IS_TESTED_ON": {
+    "verb": "TEST",
+    "object": "SUBJECT",
+    "qualifier": ""
+  },
+  "NOT_EQUAL_TO": {
+    "verb": "EQUAL",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "DESCRIBES_THE_DELAY_IN_EFFECTS_OF": {
+    "verb": "DESCRIBE",
+    "object": "EFFECTS",
+    "qualifier": "DELAY"
+  },
+  "DESCRIBES_THE_RELATIONSHIP_BETWEEN": {
+    "verb": "DESCRIBE",
+    "object": "RELATIONSHIP",
+    "qualifier": "BETWEEN"
+  },
+  "IS_A_COMPONENT_OF": {
+    "verb": "BE",
+    "object": "COMPONENT",
+    "qualifier": ""
+  },
+  "IS_THE_SUBJECT_OF": {
+    "verb": "BE",
+    "object": "SUBJECT",
+    "qualifier": ""
+  },
+  "IS_USED_AS": {
+    "verb": "BE",
+    "object": "USAGE",
+    "qualifier": ""
+  },
+  "AFFRONTATO_CON": {
+    "verb": "ACCUSE",
+    "object": "",
+    "qualifier": "CON"
+  },
+  "A_DIFFERENZA_DI": {
+    "verb": "COMPARE",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "COINVOLTI": {
+    "verb": "INVOLVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "COMPIERE": {
+    "verb": "FULFILL",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONTROLLANO": {
+    "verb": "CONTROL",
+    "object": "",
+    "qualifier": ""
+  },
+  "DISTORCERE": {
+    "verb": "DISTORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "FARE_VARIARE_IN_UNA_DIREZIONE_PIUTTOSTO_CHE_IN_UN_": {
+    "verb": "CAUSE",
+    "object": "",
+    "qualifier": "IN_UNA_DIREZIONE"
+  },
+  "IN_ATTO": {
+    "verb": "ACT",
+    "object": "",
+    "qualifier": "IN_ATTO"
+  },
+  "NON_MASSIMIZZANTI": {
+    "verb": "OPT",
+    "object": "",
+    "qualifier": "NON_MASSIMIZZANTI"
+  },
+  "RIFLETTERE_SEMPRE": {
+    "verb": "REFLECT",
+    "object": "",
+    "qualifier": "SEMPRE"
+  },
+  "RISULTATO_DEI_COMPORTAMENTI_DI": {
+    "verb": "RESULT",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "CALCOLATO": {
+    "verb": "CALCULATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "RAPPRESENTATO_DA": {
+    "verb": "REPRESENT",
+    "object": "",
+    "qualifier": "BY"
+  },
+  "RIFERIRSI_PER_LA_BORSA_SUDAFRICANA": {
+    "verb": "REFER",
+    "object": "SOUTH AFRICAN STOCK EXCHANGE",
+    "qualifier": ""
+  },
+  "RISULTA_ESSERE": {
+    "verb": "RESULT",
+    "object": "",
+    "qualifier": "TO BE"
+  },
+  "TEST_DI_IPOTESI_CONDOTTO": {
+    "verb": "CONDUCT",
+    "object": "HYPOTHESIS TEST",
+    "qualifier": ""
+  },
+  "HYPOTHESIS": {
+    "verb": "DECLARE",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "SUPPORTA": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROVIDES_INVESTMENT_OPPORTUNITIES": {
+    "verb": "PROVIDE",
+    "object": "OPPORTUNITIES",
+    "qualifier": ""
+  },
+  "MARKET_FOR": {
+    "verb": "RELATE",
+    "object": "GOODS",
+    "qualifier": ""
+  },
+  "USED_ON": {
+    "verb": "USE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CAN_INCLUDE": {
+    "verb": "INCLUDE",
+    "object": "ITEMS",
+    "qualifier": ""
+  },
+  "SPANS": {
+    "verb": "SPAN",
+    "object": "",
+    "qualifier": "TIME"
+  },
+  "ADATTAMENTO_DISTRIBUZIONE": {
+    "verb": "ADJUST",
+    "object": "DISTRIBUTION",
+    "qualifier": ""
+  },
+  "CALCOLO_CON_LOG_RENDIMENTO": {
+    "verb": "CALCULATE",
+    "object": "RETURN",
+    "qualifier": "WITH_LOG"
+  },
+  "FUNZIONE_DI_UTILIT": {
+    "verb": "DEFINE",
+    "object": "UTILITY_FUNCTION",
+    "qualifier": ""
+  },
+  "RENDIMENTO_ATTESO": {
+    "verb": "EXPECT",
+    "object": "RETURN",
+    "qualifier": ""
+  },
+  "RISCHIO": {
+    "verb": "ASSESS",
+    "object": "RISK",
+    "qualifier": ""
+  },
+  "SCELTA_PORTAFOGLIO": {
+    "verb": "CHOOSE",
+    "object": "PORTFOLIO",
+    "qualifier": ""
+  },
+  "CORRISPONDE": {
+    "verb": "CORRESPOND",
+    "object": "",
+    "qualifier": ""
+  },
+  "DEFINITO_DA": {
+    "verb": "DEFINE",
+    "object": "",
+    "qualifier": "DA"
+  },
+  "USED_FOR_CONSTRUCTION": {
+    "verb": "USE",
+    "object": "BUILDING",
+    "qualifier": ""
+  },
+  "LOCATED_IN_ZONE": {
+    "verb": "LOCATE",
+    "object": "ZONE",
+    "qualifier": ""
+  },
+  "COMBINATO_CON": {
+    "verb": "COMBINED",
+    "object": "",
+    "qualifier": "WITH"
+  },
+  "SI_TROVA_SU": {
+    "verb": "LOCATED",
+    "object": "",
+    "qualifier": ""
+  },
+  "AUF_DER": {
+    "verb": "INVESTED",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "INVESTIERT_IN": {
+    "verb": "INVESTS",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "LIEGT_AUF_DER": {
+    "verb": "LOCATED",
+    "object": "SURFACE",
+    "qualifier": ""
+  },
+  "WIRD_VERWENDET_F_R": {
+    "verb": "USED",
+    "object": "PURPOSE",
+    "qualifier": "FOR"
+  },
+  "ZWISCHEN_P_UND_M": {
+    "verb": "BETWEEN",
+    "object": "",
+    "qualifier": "AND"
+  },
+  "INFLUENZA_INDIRETTA": {
+    "verb": "AFFECT",
+    "object": "",
+    "qualifier": "INDIRECT"
+  },
+  "MOLTIPLICAZIONE_MATRICE_MATRICE": {
+    "verb": "MULTIPLY",
+    "object": "MATRIX",
+    "qualifier": ""
+  },
+  "MOLTIPLICAZIONE_MATRICE_VETTORE": {
+    "verb": "MULTIPLY",
+    "object": "VECTOR",
+    "qualifier": ""
+  },
+  "HAS_SHARPE_RATIO": {
+    "verb": "HAVE",
+    "object": "SHARPE_RATIO",
+    "qualifier": ""
+  },
+  "IS_USED_IN_CALCULATION": {
+    "verb": "USE",
+    "object": "CALCULATION",
+    "qualifier": ""
+  },
+  "MISSING_FROM": {
+    "verb": "DISAPPEAR",
+    "object": "LOCATION",
+    "qualifier": ""
+  },
+  "ENVIRONMENT_FOR": {
+    "verb": "SUPPORT",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "THEORY_FOR": {
+    "verb": "EXPLAIN",
+    "object": "PHENOMENON",
+    "qualifier": ""
+  },
+  "IDENTIFIES_EQUIVALENT": {
+    "verb": "IDENTIFY",
+    "object": "EQUIVALENT",
+    "qualifier": ""
+  },
+  "FONTE": {
+    "verb": "SOURCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "RAPPRESENTAZIONE": {
+    "verb": "REPRESENT",
+    "object": "",
+    "qualifier": ""
+  },
+  "SERIE_DATI": {
+    "verb": "CONTAIN",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "TANGENZA": {
+    "verb": "TOUCH",
+    "object": "",
+    "qualifier": ""
+  },
+  "DETERMINATO_DAL_PARAGRAFO_PRECEDENTE": {
+    "verb": "FOLLOWS",
+    "object": "",
+    "qualifier": "PRECEDENTE"
+  },
+  "PUNTO_DI_TANGENZA": {
+    "verb": "REACHES",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "QUOTE_COMPOSITION": {
+    "verb": "FORMULATE",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "RISK_AVERSION_PARAMETER": {
+    "verb": "DEFINE",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "CALCOLATO_DA": {
+    "verb": "CALCULATE",
+    "object": "",
+    "qualifier": "DA"
+  },
+  "CONSIDERATO_NELLA_COSTRUZIONE_DI": {
+    "verb": "CONSIDER",
+    "object": "CONSTRUCTION",
+    "qualifier": "IN"
+  },
+  "CONSIDERATO_NEL_CALCOLO_DEL": {
+    "verb": "CONSIDER",
+    "object": "CALCULATION",
+    "qualifier": "DEL"
+  },
+  "CONVERTITO_IN": {
+    "verb": "CONVERT",
+    "object": "",
+    "qualifier": "IN"
+  },
+  "MOLTIPLICATO_PER": {
+    "verb": "MULTIPLY",
+    "object": "",
+    "qualifier": "PER"
+  },
+  "SOMMATO_IN": {
+    "verb": "SUM",
+    "object": "",
+    "qualifier": "IN"
+  },
+  "UTILIZZATO_PER_COSTRUIRE": {
+    "verb": "USE",
+    "object": "CONSTRUCTION",
+    "qualifier": "PER"
+  },
+  "RENDIMENTO_MEDIO": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FA_S_CHE": {
+    "verb": "USE",
+    "object": "CONSTRUCTION",
+    "qualifier": ""
+  },
+  "UTILIZZATO_PER_LA_COSTRUZIONE_DI": {
+    "verb": "USE",
+    "object": "CONSTRUCTION",
+    "qualifier": ""
+  },
+  "CARATTERISTICA_DI": {
+    "verb": "DESCRIBE",
+    "object": "FEATURE",
+    "qualifier": ""
+  },
+  "INFLUENZA_SUL": {
+    "verb": "IMPACT",
+    "object": "THING",
+    "qualifier": ""
+  },
+  "OTTIMIZZATO_PER": {
+    "verb": "OPTIMIZE",
+    "object": "TASK",
+    "qualifier": ""
+  },
+  "RIPORTA": {
+    "verb": "REPORT",
+    "object": "FINDING",
+    "qualifier": ""
+  },
+  "ADDRESSES_PROBLEM": {
+    "verb": "ADDRESS",
+    "object": "PROBLEM",
+    "qualifier": ""
+  },
+  "GOAL": {
+    "verb": "HAVE",
+    "object": "OBJECTIVE",
+    "qualifier": ""
+  },
+  "SEEN_AS": {
+    "verb": "CONSIDER",
+    "object": "",
+    "qualifier": ""
+  },
+  "METODOLOGIA": {
+    "verb": "APPROACH",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "INFLUENCES_WEIGHTING": {
+    "verb": "INFLUENCE",
+    "object": "WEIGHTING",
+    "qualifier": ""
+  },
+  "METHOD_FOR_CONSTRUCTION": {
+    "verb": "USE",
+    "object": "METHOD",
+    "qualifier": "FOR_CONSTRUCTION"
+  },
+  "ASSUMA_LA_FORMA_DI": {
+    "verb": "ASSUME",
+    "object": "FORM",
+    "qualifier": "OF"
+  },
+  "CONDIZIONATO_DA": {
+    "verb": "CONDITIONED",
+    "object": "FACTOR",
+    "qualifier": "BY"
+  },
+  "DIMENSIONE_DEL_VETTORE_DI": {
+    "verb": "DIMENSION",
+    "object": "VECTOR",
+    "qualifier": "OF"
+  },
+  "EXPRESSED_ON": {
+    "verb": "EXPRESS",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "SYNTHESIZES": {
+    "verb": "SYNTHESIZE",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "IS_MEAN_OF": {
+    "verb": "DESCRIBE",
+    "object": "AVERAGE",
+    "qualifier": ""
+  },
+  "REPRESENTS_VARIANCE_OF": {
+    "verb": "INDICATE",
+    "object": "VARIANCE",
+    "qualifier": ""
+  },
+  "REPRESENTS_WEIGHTS_ACROSS": {
+    "verb": "DISTRIBUTE",
+    "object": "WEIGHTS",
+    "qualifier": ""
+  },
+  "REPRESENTS_WEIGHTS_OF": {
+    "verb": "ASSIGN",
+    "object": "WEIGHTS",
+    "qualifier": ""
+  },
+  "CONDITIONED_ON": {
+    "verb": "DEPEND",
+    "object": "",
+    "qualifier": "ON"
+  },
+  "PROVIDES_FRAMEWORK_FOR_CALCULATING": {
+    "verb": "DEFINE",
+    "object": "FRAMEWORK",
+    "qualifier": "CALCULATING"
+  },
+  "USED_TO_DERIVE": {
+    "verb": "DERIVE",
+    "object": "",
+    "qualifier": "FROM"
+  },
+  "CATEGORIA_DI_AZIENDE_CONSIDERATA": {
+    "verb": "CONSIDER",
+    "object": "",
+    "qualifier": ""
+  },
+  "DATA_DI_RIFERIMENTO": {
+    "verb": "REFERENCE",
+    "object": "DATE",
+    "qualifier": ""
+  },
+  "DETERMINA_IL_PESO": {
+    "verb": "DETERMINE",
+    "object": "WEIGHT",
+    "qualifier": ""
+  },
+  "RAPPRESENTA_LA_PROPORZIONE_DEL_PORTAFOGLIO": {
+    "verb": "REPRESENT",
+    "object": "RATIO",
+    "qualifier": ""
+  },
+  "VALUTA_UTILIZZATA_PER_LA_CAPITALIZZAZIONE": {
+    "verb": "USE",
+    "object": "CURRENCY",
+    "qualifier": ""
+  },
+  "BENCHMARK_DI_MERCATO": {
+    "verb": "DEFINE",
+    "object": "MARKET",
+    "qualifier": ""
+  },
+  "COMBINAZIONE_BENCHMARK_TITOLO_RISK_FREE": {
+    "verb": "CALCULATE",
+    "object": "PORTFOLIO",
+    "qualifier": "RISK_FREE"
+  },
+  "DIVERSIFICAZIONE": {
+    "verb": "PRACTICE",
+    "object": "",
+    "qualifier": ""
+  },
+  "MEDIA_DEI_RENDIMENTI_LOGARITMICI": {
+    "verb": "CALCULATE",
+    "object": "RETURNS",
+    "qualifier": "LOGARITHMIC"
+  },
+  "RISCOSIT": {
+    "verb": "DEFINE",
+    "object": "RISK",
+    "qualifier": ""
+  },
+  "VALORE_ATTESO_DEI_LOG_RENDIMENTI": {
+    "verb": "CALCULATE",
+    "object": "RETURNS",
+    "qualifier": "EXPECTED"
+  },
+  "VARIANZA": {
+    "verb": "CALCULATE",
+    "object": "RISK",
+    "qualifier": ""
+  },
+  "MEMBER": {
+    "verb": "BELONG",
+    "object": "ORGANIZATION",
+    "qualifier": ""
+  },
+  "NEW_DATE": {
+    "verb": "SET",
+    "object": "DATE",
+    "qualifier": ""
+  },
+  "NEW_PRESIDENT": {
+    "verb": "ELECT",
+    "object": "PRESIDENT",
+    "qualifier": ""
+  },
+  "PRESIDENT": {
+    "verb": "HOLD",
+    "object": "OFFICE",
+    "qualifier": ""
+  },
+  "FORMER_LEADER": {
+    "verb": "LEAD",
+    "object": "GOVERNANCE",
+    "qualifier": ""
+  },
+  "GOVERNANCE": {
+    "verb": "REGULATE",
+    "object": "",
+    "qualifier": "REGULATION"
+  },
+  "LEADER": {
+    "verb": "LEAD",
+    "object": "",
+    "qualifier": ""
+  },
+  "SOURCE": {
+    "verb": "SOURCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "MOVEMENT_IN": {
+    "verb": "ENTER",
+    "object": "",
+    "qualifier": "IN"
+  },
+  "ACCUSES_OF_SUBSIDIES": {
+    "verb": "ACCUSE",
+    "object": "SUBSIDIES",
+    "qualifier": ""
+  },
+  "CRITICIZES_INABILITY_TO_REGULATE": {
+    "verb": "CRITICIZE",
+    "object": "INABILITY_TO_REGULATE",
+    "qualifier": ""
+  },
+  "PROPOSED_AMENDMENT": {
+    "verb": "PROPOSE",
+    "object": "AMENDMENT",
+    "qualifier": ""
+  },
+  "REQUESTED_RETALIATION": {
+    "verb": "REQUEST",
+    "object": "RETALIATION",
+    "qualifier": ""
+  },
+  "HAS_VIEW": {
+    "verb": "SEE",
+    "object": "CITY",
+    "qualifier": ""
+  },
+  "DEVIAZIONE_STANDARD_B_L": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "RENDIMENTI_B_L": {
+    "verb": "SUPPORT",
+    "object": "ELECTIONS",
+    "qualifier": ""
+  },
+  "UTILIZZATO_PER": {
+    "verb": "USED",
+    "object": "PURPOSE",
+    "qualifier": ""
+  },
+  "ALLOCAZIONE": {
+    "verb": "ALLOCATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "AIMS_TO_IDENTIFY": {
+    "verb": "IDENTIFY",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "COMBINES_WITH": {
+    "verb": "COMBINE",
+    "object": "ENTITY",
+    "qualifier": ""
+  },
+  "PERFORMANCE": {
+    "verb": "PERFORM",
+    "object": "",
+    "qualifier": ""
+  },
+  "ACADEMICYEAR": {
+    "verb": "LINK",
+    "object": "",
+    "qualifier": ""
+  },
+  "CORRELATRICE": {
+    "verb": "LINK",
+    "object": "",
+    "qualifier": ""
+  },
+  "LEADSTO": {
+    "verb": "LEAD",
+    "object": "",
+    "qualifier": ""
+  },
+  "MATRICOLA": {
+    "verb": "REGISTER",
+    "object": "",
+    "qualifier": ""
+  },
+  "DEDICATEDTO": {
+    "verb": "DEDICATE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "WORKIN": {
+    "verb": "WORK",
+    "object": "",
+    "qualifier": "IN"
+  },
+  "CONCEPT_OF": {
+    "verb": "DESCRIBE",
+    "object": "CONCEPT",
+    "qualifier": ""
+  },
+  "SUBTOPIC_OF": {
+    "verb": "SUBSUME",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "TECHNIQUE_OF": {
+    "verb": "EMPLOY",
+    "object": "TECHNIQUE",
+    "qualifier": ""
+  },
+  "TOPIC_OF": {
+    "verb": "ADDRESS",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "AIMS_TO_LIMIT": {
+    "verb": "AIM",
+    "object": "LIMITS",
+    "qualifier": ""
+  },
+  "DESCRIBE_COME": {
+    "verb": "DESCRIBE",
+    "object": "",
+    "qualifier": "COME"
+  },
+  "DIFFERENZA_DA": {
+    "verb": "DIFFER",
+    "object": "",
+    "qualifier": "DA"
+  },
+  "FORMULAZIONE_DA": {
+    "verb": "FORMULATE",
+    "object": "",
+    "qualifier": "DA"
+  },
+  "INFLUENZA_SU_PREZZI": {
+    "verb": "INFL",
+    "object": "PRICES",
+    "qualifier": ""
+  },
+  "INTEGRAZIONE_CON": {
+    "verb": "INTEGRATE",
+    "object": "",
+    "qualifier": "CON"
+  },
+  "ORIGINE_DI": {
+    "verb": "ORIGINATE",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "PILASTRO_DI": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "CONTRIBUTED_TO": {
+    "verb": "CONTRIBUTE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CO_DEVELOPED": {
+    "verb": "DEVELOP",
+    "object": "",
+    "qualifier": ""
+  },
+  "INTEGRATES_WITH": {
+    "verb": "INTEGRATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "BASIS_FOR": {
+    "verb": "FOUND",
+    "object": "",
+    "qualifier": ""
+  },
+  "EDITOR_OF": {
+    "verb": "EDIT",
+    "object": "",
+    "qualifier": ""
+  },
+  "FOUNDATION": {
+    "verb": "FOUND",
+    "object": "",
+    "qualifier": ""
+  },
+  "PUBLISHER_OF": {
+    "verb": "PUBLISH",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONTRIBUTOR": {
+    "verb": "CONTRIBUTE",
+    "object": "",
+    "qualifier": ""
+  },
+  "VOLUME": {
+    "verb": "PUBLISH",
+    "object": "BOOK",
+    "qualifier": ""
+  },
+  "YEAR_PUBLISHED": {
+    "verb": "PUBLISH",
+    "object": "BOOK",
+    "qualifier": ""
+  },
+  "FORMS_THE_BASIS_OF": {
+    "verb": "UNDERPIN",
+    "object": "",
+    "qualifier": "OF"
+  },
+  "HAS_ACCESS_TO": {
+    "verb": "ACCESS",
+    "object": "",
+    "qualifier": ""
+  },
+  "HINDERS": {
+    "verb": "OBSTRUCT",
+    "object": "",
+    "qualifier": ""
+  },
+  "IS_A_CONDITION_FOR": {
+    "verb": "REQUIRE",
+    "object": "",
+    "qualifier": "FOR"
+  },
+  "IS_CENTRAL_TO": {
+    "verb": "中心",
+    "object": "",
+    "qualifier": "TO"
+  },
+  "AXIOM_OF": {
+    "verb": "BELONGS_TO",
+    "object": "AXIOM",
+    "qualifier": ""
+  },
+  "CONCEPT_IN": {
+    "verb": "CONTAIN",
+    "object": "CONCEPT",
+    "qualifier": ""
+  },
+  "PUBLISHED_IN_YEAR": {
+    "verb": "PUBLISHED",
+    "object": "YEAR",
+    "qualifier": ""
+  },
+  "CRITICIZED": {
+    "verb": "CRITICIZE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CO_AUTHOR_OF": {
+    "verb": "AUTHOR",
+    "object": "WORK",
+    "qualifier": ""
+  },
+  "PILLAR_OF": {
+    "verb": "SUPPORT",
+    "object": "CITY",
+    "qualifier": ""
+  },
+  "PUBLISHEDBY": {
+    "verb": "PUBLISH",
+    "object": "",
+    "qualifier": ""
+  },
+  "RESPONSETO": {
+    "verb": "RESPOND",
+    "object": "REQUEST",
+    "qualifier": ""
+  },
+  "COLLABORATOR_WITH": {
+    "verb": "COLLABORATE",
+    "object": "",
+    "qualifier": "WITH"
+  },
+  "REFERENCE_IN": {
+    "verb": "REFER",
+    "object": "",
+    "qualifier": "IN"
+  },
+  "CO_AUTHOR": {
+    "verb": "COLLABORATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONCEPTIN": {
+    "verb": "DESCRIBE",
+    "object": "CONCEPT",
+    "qualifier": ""
+  },
+  "DESCRIBEDBY": {
+    "verb": "DESCRIBE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "PUBLISHEDIN": {
+    "verb": "PUBLISH",
+    "object": "JOURNAL",
+    "qualifier": ""
+  },
+  "CONCEPT_WITHIN": {
+    "verb": "CONTAIN",
+    "object": "CONCEPT",
+    "qualifier": ""
+  },
+  "CO_AUTHORED": {
+    "verb": "AUTHOR",
+    "object": "WORK",
+    "qualifier": ""
+  },
+  "COAUTHOROF": {
+    "verb": "COLLABORATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "REFERENCEIN": {
+    "verb": "MENTION",
+    "object": "WORK",
+    "qualifier": ""
+  },
+  "PUBLISHER": {
+    "verb": "PUBLISH",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROVIDES_INFORMATION_TO": {
+    "verb": "PROVIDE",
+    "object": "INFORMATION",
+    "qualifier": "TO"
+  },
+  "RECEIVED_DEGREE": {
+    "verb": "RECEIVE",
+    "object": "DEGREE",
+    "qualifier": ""
+  },
+  "DISCUSSED_BY": {
+    "verb": "APPROACH",
+    "object": "TARGET",
+    "qualifier": "BY"
+  },
+  "DESCRIBED": {
+    "verb": "DESCRIBE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PUBLISHED_YEAR": {
+    "verb": "PUBLISH",
+    "object": "",
+    "qualifier": ""
+  },
+  "RESEARCH_ON": {
+    "verb": "RESEARCH",
+    "object": "",
+    "qualifier": ""
+  },
+  "HA_AVUTO_IMPATTO_SU": {
+    "verb": "HAVE_IMPACT",
+    "object": "",
+    "qualifier": "SU"
+  },
+  "TIPO_DI": {
+    "verb": "BE",
+    "object": "",
+    "qualifier": "TIPO"
+  },
+  "EXAMPLEOF": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "MAKE_DECISIONS_IN": {
+    "verb": "MAKE",
+    "object": "CONTEXT",
+    "qualifier": "IN"
+  },
+  "ALLA_BASE_DI_MOLTE_RESISTENZE_AL_CAMBIAMENTO_OSSER": {
+    "verb": "SUPPORT",
+    "object": "CHANGES",
+    "qualifier": "OSSER"
+  },
+  "CERCA_RICORDA_E_D_MAGGIORE_IMPORTANZA_ALLE": {
+    "verb": "REMEMBER",
+    "object": "IMPORTANCE",
+    "qualifier": "ALLE"
+  },
+  "CONFERMANDO_LA_PRESENZA_DEL": {
+    "verb": "CONFIRM",
+    "object": "PRESENCE",
+    "qualifier": "DEL"
+  },
+  "CON_CONSEGUENZE_NEGATIVE_E_DECISIONI_NON_OTTIMALI": {
+    "verb": "HAVE",
+    "object": "CONSEQUENCES",
+    "qualifier": "NON_OTTIMALI"
+  },
+  "CREA_UNA_SORTA_DI": {
+    "verb": "CREATE",
+    "object": "KIND",
+    "qualifier": "DI"
+  },
+  "ERA_QUELLA_PI_ESTESA": {
+    "verb": "BE",
+    "object": "WIDESPREAD",
+    "qualifier": "ESTESA"
+  },
+  "HA_OPTATO_PER": {
+    "verb": "CHOOSE",
+    "object": "OPTION",
+    "qualifier": "PER"
+  },
+  "HA_PREFERITO_MANTENERLA": {
+    "verb": "PREFER",
+    "object": "STATUS",
+    "qualifier": "MANTENERLA"
+  },
+  "IGNORARE_TRASCURARE_O_SMINUIRE_DI_CONSEGUENZA_LE_A": {
+    "verb": "IGNORE",
+    "object": "CONSEQUENCES",
+    "qualifier": "A"
+  },
+  "IMPEDIRE_DI_ADOTTARE": {
+    "verb": "PREVENT",
+    "object": "ADOPT",
+    "qualifier": "ADOTTARE"
+  },
+  "IMPEDIRE_DI_COGLIERE": {
+    "verb": "PREVENT",
+    "object": "UNDERSTAND",
+    "qualifier": "COGLIERE"
+  },
+  "INFLUENZI_FORTEMENTE_LE": {
+    "verb": "INFLUENCE",
+    "object": "THINGS",
+    "qualifier": "LE"
+  },
+  "INSIEME_ALL_AVVERSIONE_ALLE_PERDITE_E_ALL_EFFETTO_": {
+    "verb": "HAVE",
+    "object": "AVERSION",
+    "qualifier": "EFFETTO"
+  },
+  "OSSERVATE_IN_AMBITO": {
+    "verb": "OBSERVE",
+    "object": "CONTEXT",
+    "qualifier": "AMBITO"
+  },
+  "PORTA_GLI_INDIVIDUI_IN_PARTICOLARE_GLI_INVERTITORI": {
+    "verb": "BRING",
+    "object": "PEOPLE",
+    "qualifier": "INVERTITORI"
+  },
+  "RENDE_DIFFICILE_ACCETTARE_L_INCERTEZZA_E_IL_RISCHI": {
+    "verb": "MAKE",
+    "object": "ACCEPTANCE",
+    "qualifier": "RISCHI"
+  },
+  "SI_BASANO_SU_DATI_CHE_CONFERMANO_LE_LORO": {
+    "verb": "BASED",
+    "object": "DATA",
+    "qualifier": "LORO"
+  },
+  "AFFILIATEDWITH": {
+    "verb": "AFFILIATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "INFLUENCESACCURACYOF": {
+    "verb": "INFLUENCE",
+    "object": "ACCURACY",
+    "qualifier": ""
+  },
+  "RELEVANTTO": {
+    "verb": "RELEVANT",
+    "object": "",
+    "qualifier": ""
+  },
+  "STUDIEDWITHINCONTEXT": {
+    "verb": "STUDY",
+    "object": "CONTEXT",
+    "qualifier": ""
+  },
+  "SUBJECTOFSTUDY": {
+    "verb": "BE_SUBJECT",
+    "object": "STUDY",
+    "qualifier": ""
+  },
+  "CONDUCTS": {
+    "verb": "CONDUCT",
+    "object": "",
+    "qualifier": ""
+  },
+  "SEEKS": {
+    "verb": "SEEK",
+    "object": "",
+    "qualifier": ""
+  },
+  "INTRODUCED_AND_ANALYZED": {
+    "verb": "INTRODUCE",
+    "object": "MODELS",
+    "qualifier": "ANALYZED"
+  },
+  "LEADS_TO_INCOMPLETE_MODELS": {
+    "verb": "LEAD",
+    "object": "MODELS",
+    "qualifier": "INCOMPLETE"
+  },
+  "APPLIED_IN": {
+    "verb": "APPLY",
+    "object": "CONTEXT",
+    "qualifier": ""
+  },
+  "CONTRASTA_CON": {
+    "verb": "COMPARE",
+    "object": "",
+    "qualifier": "CON"
+  },
+  "ADDRESSED_BY": {
+    "verb": "ADDRESS",
+    "object": "",
+    "qualifier": "BY"
+  },
+  "ADDRESSED": {
+    "verb": "ADDRESS",
+    "object": "",
+    "qualifier": "METHOD"
+  },
+  "EFFECTIVE_METHOD": {
+    "verb": "BE",
+    "object": "METHOD",
+    "qualifier": ""
+  },
+  "APPLICAZIONE_DI": {
+    "verb": "APPLY",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "CAUSA_DI": {
+    "verb": "CAUSE",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "CONFRONTO_CON": {
+    "verb": "CONFRONT",
+    "object": "",
+    "qualifier": "CON"
+  },
+  "ISTITUZIONE_DI": {
+    "verb": "ESTABLISH",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "RIDUZIONE_DI": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "EDITED_BY": {
+    "verb": "WORK",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "USED_FOR_EVALUATING": {
+    "verb": "ASSESS",
+    "object": "PERFORMANCE",
+    "qualifier": ""
+  },
+  "USED_TO_RECOGNIZE": {
+    "verb": "IDENTIFY",
+    "object": "PATTERN",
+    "qualifier": ""
+  },
+  "COORDINA": {
+    "verb": "COORDINATION",
+    "object": "",
+    "qualifier": ""
+  },
+  "FORMAZIONE": {
+    "verb": "FORMATION",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROTEZIONE": {
+    "verb": "PROTECTION",
+    "object": "",
+    "qualifier": ""
+  },
+  "STIMOLAZIONE_CONTENUTA_CRISI_FINANZIARIA": {
+    "verb": "STIMULATE",
+    "object": "ECONOMY",
+    "qualifier": "CRISIS"
+  },
+  "VIGILANZA": {
+    "verb": "SURVEILLANCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "VIGILANZA_TRASPARENZA_E_CORRETTEZZA": {
+    "verb": "MONITOR",
+    "object": "TRANSPARENCY",
+    "qualifier": "CORRECTNESS"
+  },
+  "LOCATION_OF_PUBLICATION": {
+    "verb": "PUBLISHED",
+    "object": "WORK",
+    "qualifier": ""
+  },
+  "PAGES": {
+    "verb": "COVER",
+    "object": "WORK",
+    "qualifier": ""
+  },
+  "REFERENCED_IN_YEAR": {
+    "verb": "REFERENCE",
+    "object": "WORK",
+    "qualifier": ""
+  },
+  "VOLUME_NUMBER": {
+    "verb": "BELONG",
+    "object": "WORK",
+    "qualifier": ""
+  },
+  "MODELS": {
+    "verb": "SUPPORT",
+    "object": "MODEL",
+    "qualifier": ""
+  },
+  "HOSTED_BY": {
+    "verb": "HOST",
+    "object": "COUNTRY",
+    "qualifier": "BY"
+  },
+  "EXPERIMENTON": {
+    "verb": "PERFORM",
+    "object": "",
+    "qualifier": "ON"
+  },
+  "EXPLAINEDBY": {
+    "verb": "EXPLAIN",
+    "object": "",
+    "qualifier": "BY"
+  },
+  "PROVIDES_EVIDENCE_FOR": {
+    "verb": "SUPPORTS",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "CONTRIBUTESTO": {
+    "verb": "CONTRIBUTE",
+    "object": "",
+    "qualifier": ""
+  },
+  "IDENTIFIEDCAUSES": {
+    "verb": "IDENTIFY",
+    "object": "CAUSES",
+    "qualifier": ""
+  },
+  "RESEARCHED": {
+    "verb": "RESEARCH",
+    "object": "",
+    "qualifier": ""
+  },
+  "DERIVATION_OF": {
+    "verb": "DERIVE",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "EXAMPLE_IN": {
+    "verb": "ILLUSTRATE",
+    "object": "CONTEXT",
+    "qualifier": ""
+  },
+  "PERCEPTION_OF": {
+    "verb": "PERCEIVE",
+    "object": "SUBJECT",
+    "qualifier": ""
+  },
+  "TO_MAKE_APPEAR": {
+    "verb": "PRESENT",
+    "object": "EVENT",
+    "qualifier": ""
+  },
+  "OBSERVED": {
+    "verb": "OBSERVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CO_AUTHORED_WITH": {
+    "verb": "CO_AUTHOR",
+    "object": "",
+    "qualifier": ""
+  },
+  "COMBINED_WITH": {
+    "verb": "COMBINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FOUND_EVIDENCE_OF": {
+    "verb": "FIND",
+    "object": "EVIDENCE",
+    "qualifier": ""
+  },
+  "INTERPRETED_AS_A_PROCESS": {
+    "verb": "INTERPRET",
+    "object": "PROCESS",
+    "qualifier": ""
+  },
+  "PROPOSED_MODEL_FOR": {
+    "verb": "PROPOSE",
+    "object": "MODEL",
+    "qualifier": "FOR"
+  },
+  "ATTRAVERSO_DOMANDE_STRUTTURATE_E_AFFERMAZIONI_SU_C": {
+    "verb": "APPROACH",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "COMPRENDERE_COME_GLI_INDIVIDUI_SI_RAPPORTANO_A_SPE": {
+    "verb": "UNDERSTAND",
+    "object": "RELATIONSHIP",
+    "qualifier": ""
+  },
+  "CONSENTE_DI_COGLIERE_SFUMATURE_IMPORTANTI": {
+    "verb": "REVEAL",
+    "object": "INSIGHTS",
+    "qualifier": ""
+  },
+  "D_SPAZIO_A_RIFLESSIONI_PI_PERSONALI_E_CONCRETE": {
+    "verb": "ALLOW",
+    "object": "REFLECTION",
+    "qualifier": ""
+  },
+  "ENTRARE_IN_CONTATTO_DIRETTO_CON": {
+    "verb": "CONTACT",
+    "object": "PERSON",
+    "qualifier": ""
+  },
+  "ESPLORARE_NON_SOLO_LE_CARATTERISTICHE_DEMOGRAFICHE": {
+    "verb": "EXPLORE",
+    "object": "CHARACTERISTICS",
+    "qualifier": ""
+  },
+  "GIOCANO_UN_RUOLO_CRUCIALE_NEI_RISULTATI_DEGLI_INVE": {
+    "verb": "PLAY",
+    "object": "ROLE",
+    "qualifier": ""
+  },
+  "METTERE_IN_LUCE_PATTERN_RICORRENTI": {
+    "verb": "EXPOSE",
+    "object": "PATTERNS",
+    "qualifier": ""
+  },
+  "METTERE_IN_LUCE_POSSIBILI_BIAS_COGNITIVI": {
+    "verb": "EXPOSE",
+    "object": "BIAS",
+    "qualifier": ""
+  },
+  "METTERE_IN_LUCE_TENDENZE_COMPORTAMENTALI": {
+    "verb": "EXPOSE",
+    "object": "TRENDS",
+    "qualifier": ""
+  },
+  "MISURARE_CON_MAGGIORE_PRECISIONE_LA_FORZA_DELLE_CO": {
+    "verb": "MEASURE",
+    "object": "STRENGTH",
+    "qualifier": ""
+  },
+  "RAPPRESENTA_UNO_STRUMENTO_PREZIOSO_E_CONCRETO_PER_": {
+    "verb": "REPRESENT",
+    "object": "TOOL",
+    "qualifier": ""
+  },
+  "SI_AVVICINANO_AL_MONDO_DELLA_FINANZA": {
+    "verb": "APPROACH",
+    "object": "FINANCE",
+    "qualifier": ""
+  },
+  "SONDARE_I_LORO_PENSIERI": {
+    "verb": "PROBE",
+    "object": "THOUGHTS",
+    "qualifier": ""
+  },
+  "ADDRESSEDBY": {
+    "verb": "ADDRESS",
+    "object": "",
+    "qualifier": ""
+  },
+  "USEDIN": {
+    "verb": "USE",
+    "object": "",
+    "qualifier": ""
+  },
+  "HA_CONSEGUITO": {
+    "verb": "RESULT",
+    "object": "",
+    "qualifier": ""
+  },
+  "SOMMINISTRAZIONE_TRAMITE": {
+    "verb": "ADMINISTER",
+    "object": "",
+    "qualifier": "TRAMITE"
+  },
+  "PERCEZIONE_DI_DETERMINAZIONE": {
+    "verb": "SEE",
+    "object": "",
+    "qualifier": "DI"
+  },
+  "SENSO_DI_SUPERIORIT": {
+    "verb": "FEEL",
+    "object": "BETTER",
+    "qualifier": ""
+  },
+  "APPLICATO_A": {
+    "verb": "APPLY",
+    "object": "",
+    "qualifier": "A"
+  },
+  "RAPPRESENTATO_IN": {
+    "verb": "REPRESENT",
+    "object": "CONTEXT",
+    "qualifier": "IN"
+  },
+  "HAS_TREATMENT": {
+    "verb": "RECEIVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "USED_TO_MEASURE": {
+    "verb": "MEASURE",
+    "object": "",
+    "qualifier": ""
+  },
+  "AIMS_TO_ACHIEVE": {
+    "verb": "AIM",
+    "object": "ACHIEVEMENT",
+    "qualifier": ""
+  },
+  "INVESTIGATES": {
+    "verb": "INVESTIGATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "OPENS_THE_WAY_FOR": {
+    "verb": "OPEN",
+    "object": "PATH",
+    "qualifier": "FOR"
+  },
+  "AFFILIATION": {
+    "verb": "BELONG",
+    "object": "ORGANIZATION",
+    "qualifier": ""
+  },
+  "CO_AUTHORSHIP": {
+    "verb": "WRITE",
+    "object": "WORK",
+    "qualifier": ""
+  },
+  "TITLE_OF": {
+    "verb": "REFERS",
+    "object": "TITLE",
+    "qualifier": ""
+  },
+  "EDITED": {
+    "verb": "EDIT",
+    "object": "TEXT",
+    "qualifier": ""
+  },
+  "UNKNOWN": {
+    "verb": "UNKNOWN",
+    "object": "",
+    "qualifier": ""
+  },
+  "ARCHIVED_IN": {
+    "verb": "ARCHIVE",
+    "object": "DATABASE",
+    "qualifier": "IN"
+  },
+  "COLLABORATED": {
+    "verb": "COLLABORATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "HAS_ROLE": {
+    "verb": "HAVE",
+    "object": "ROLE",
+    "qualifier": ""
+  },
+  "CONTRASTED_WITH": {
+    "verb": "COMPARE",
+    "object": "SUBJECT",
+    "qualifier": "WITH"
+  },
+  "AIMS_TO_ELIMINATE": {
+    "verb": "AIM",
+    "object": "TARGETS",
+    "qualifier": "TO"
+  },
+  "REWARDS": {
+    "verb": "REWARD",
+    "object": "",
+    "qualifier": ""
+  },
+  "FRUTTA": {
+    "verb": "PRODUCE",
+    "object": "PRODUCT",
+    "qualifier": ""
+  },
+  "IMMETTERE_LIQUIDIT": {
+    "verb": "INVEST",
+    "object": "CAPITAL",
+    "qualifier": ""
+  },
+  "INCENTIVA_A": {
+    "verb": "PROVIDE",
+    "object": "INCENTIVE",
+    "qualifier": ""
+  },
+  "MIRA_A_RAGGIUNGERE": {
+    "verb": "AIM",
+    "object": "GOAL",
+    "qualifier": ""
+  },
+  "PAGATO_A": {
+    "verb": "PAY",
+    "object": "PERSON",
+    "qualifier": ""
+  },
+  "PEGGIORA": {
+    "verb": "WORSEN",
+    "object": "",
+    "qualifier": ""
+  },
+  "RITARDI": {
+    "verb": "DELAY",
+    "object": "",
+    "qualifier": ""
+  },
+  "SCOPPIO": {
+    "verb": "EXPLODE",
+    "object": "",
+    "qualifier": ""
+  },
+  "TAGLIA": {
+    "verb": "CUT",
+    "object": "",
+    "qualifier": ""
+  },
+  "VINCOLATI_A": {
+    "verb": "RESTRICT",
+    "object": "",
+    "qualifier": ""
+  },
+  "EVOLUTION_FROM": {
+    "verb": "ORIGINATE",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "NOT_AN_INDICATOR_OF": {
+    "verb": "INDICATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "USED_TO_CORRECT": {
+    "verb": "CORRECT",
+    "object": "",
+    "qualifier": ""
+  },
+  "INSTRUMENT": {
+    "verb": "USE",
+    "object": "",
+    "qualifier": ""
+  },
+  "STRATEGY": {
+    "verb": "HAVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "COMPRARE_ATTENTAMENTE_SELEZIONATE": {
+    "verb": "PURCHASE",
+    "object": "PRODUCTS",
+    "qualifier": "CAREFULLY_SELECTED"
+  },
+  "CONCENTRIAMOCI_ORA_SUGLI_ALTRI": {
+    "verb": "FOCUS",
+    "object": "OTHERS",
+    "qualifier": "NOW"
+  },
+  "DIPENDA_PI_DA_UN_SEGUIRE_LA_MODA_CHE_DA_UN_ATTENTA": {
+    "verb": "DEPEND",
+    "object": "TREND",
+    "qualifier": "CLOSE_ATTENTION"
+  },
+  "ESCLUDENDO": {
+    "verb": "EXCLUDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "FASE_RIALZISTA": {
+    "verb": "RISE",
+    "object": "PHASE",
+    "qualifier": ""
+  },
+  "FASE_RIBASSISTA": {
+    "verb": "FALL",
+    "object": "PHASE",
+    "qualifier": ""
+  },
+  "PRESCINDONO_DALL_ANALISI_DEI_FONDAMENTALI_E_RIGUAR": {
+    "verb": "IGNORE",
+    "object": "ANALYSIS",
+    "qualifier": "FUNDAMENTALS"
+  },
+  "RIASSUNTI_IN_DUE_MACRO_FASI": {
+    "verb": "SUMMARIZE",
+    "object": "TWO_PHASES",
+    "qualifier": ""
+  },
+  "HAS_AVERAGE_DECLINE": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": "AVERAGE_DECLINE"
+  },
+  "HAS_AVERAGE_DURATION": {
+    "verb": "HAVE",
+    "object": "",
+    "qualifier": "AVERAGE_DURATION"
+  },
+  "GAVE_OPINION_ON": {
+    "verb": "GIVE",
+    "object": "OPINION",
+    "qualifier": ""
+  },
+  "EDITORE_DI": {
+    "verb": "PUBLISH",
+    "object": "LETTER",
+    "qualifier": "SHAREHOLDERS"
+  },
+  "LETTERA_AGLI_SHAREHOLDERS_IN": {
+    "verb": "SEND",
+    "object": "LETTER",
+    "qualifier": "SHAREHOLDERS"
+  },
+  "FIELD_OF_STUDY": {
+    "verb": "STUDY",
+    "object": "SUBJECT",
+    "qualifier": ""
+  },
+  "PAGE_NUMBER": {
+    "verb": "INDICATE",
+    "object": "PAGE",
+    "qualifier": ""
+  },
+  "PROFESSION": {
+    "verb": "HAVE",
+    "object": "PROFESSION",
+    "qualifier": ""
+  },
+  "REJECTED_BY": {
+    "verb": "REJECT",
+    "object": "APPLICATION",
+    "qualifier": ""
+  },
+  "IS_REFLECTED_IN": {
+    "verb": "INCLUDE",
+    "object": "",
+    "qualifier": ""
+  },
+  "USED_IN_CALCULATION_OF": {
+    "verb": "DETERMINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONSISTENTE_IN": {
+    "verb": "SUPPORT",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "OTTENERE_FACILI": {
+    "verb": "OBTAIN",
+    "object": "EASY",
+    "qualifier": ""
+  },
+  "RIFLESSA_NEI_PREZZI_DEI_TITOLI": {
+    "verb": "REDUCE",
+    "object": "PRICES",
+    "qualifier": "OF TITLES"
+  },
+  "SENZA_PREMIO_PER": {
+    "verb": "LACK",
+    "object": "AWARD",
+    "qualifier": "FOR"
+  },
+  "SFRUTTATE_PER_PREVEDERE": {
+    "verb": "USE",
+    "object": "PREDICT",
+    "qualifier": ""
+  },
+  "TRARRE_UN_QUALSIASI_VANTAGGIO_DALL_INFORMAZIONE_SU": {
+    "verb": "EXTRACT",
+    "object": "ADVANTAGE",
+    "qualifier": "FROM INFORMATION ON"
+  },
+  "VERRANNO_MENO_UNA_VOLTA_RICONOSCIUTI_E_DI_CONSEGUE": {
+    "verb": "RECOGNIZE",
+    "object": "",
+    "qualifier": "LESS ONCE AND CONSEQUENTLY"
+  },
+  "AIMS_FOR": {
+    "verb": "AIM",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "BEARS": {
+    "verb": "BEAR",
+    "object": "",
+    "qualifier": ""
+  },
+  "IS_A_SUBCATEGORY_OF": {
+    "verb": "SUBCATEGORY",
+    "object": "CATEGORY",
+    "qualifier": ""
+  },
+  "USES_AS_METRIC": {
+    "verb": "USE",
+    "object": "METRIC",
+    "qualifier": ""
+  },
+  "CREATOROF": {
+    "verb": "CREATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PUBLISHEDYEAR": {
+    "verb": "PUBLISH",
+    "object": "YEAR",
+    "qualifier": ""
+  },
+  "CAUSES_NEGATIVE": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": "NEGATIVE"
+  },
+  "EXPLAINED": {
+    "verb": "EXPLAIN",
+    "object": "",
+    "qualifier": ""
+  },
+  "NOT_FOCUSED_ON": {
+    "verb": "FOCUS",
+    "object": "",
+    "qualifier": "ON"
+  },
+  "CAUSED_INVERSION_TREND": {
+    "verb": "CAUSE",
+    "object": "TREND",
+    "qualifier": "INVERSION"
+  },
+  "PERIOD_OF_GROWTH": {
+    "verb": "HAVE",
+    "object": "GROWTH",
+    "qualifier": "PERIOD"
+  },
+  "STATED_COMPLEMENTARITY": {
+    "verb": "STATE",
+    "object": "COMPLEMENTARITY",
+    "qualifier": ""
+  },
+  "SUBSETS": {
+    "verb": "SUBSET",
+    "object": "",
+    "qualifier": ""
+  },
+  "BONDTYPE": {
+    "verb": "DESCRIBE",
+    "object": "BOND",
+    "qualifier": ""
+  },
+  "COMPARISONTARGET": {
+    "verb": "COMPARE_TO",
+    "object": "",
+    "qualifier": ""
+  },
+  "FINANCIALPERFORMANCEMETRIC": {
+    "verb": "MEASURE",
+    "object": "PERFORMANCE",
+    "qualifier": ""
+  },
+  "FINANCIALRATIO": {
+    "verb": "DEFINE",
+    "object": "RATIO",
+    "qualifier": ""
+  },
+  "FOCUSON": {
+    "verb": "FOCUS_ON",
+    "object": "",
+    "qualifier": ""
+  },
+  "METRICAPPLIEDTO": {
+    "verb": "APPLY",
+    "object": "METRIC",
+    "qualifier": ""
+  },
+  "POTENTIALOUTCOME": {
+    "verb": "PREDICT",
+    "object": "OUTCOME",
+    "qualifier": ""
+  },
+  "VALUATIONMETRIC": {
+    "verb": "EVALUATE",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "PROPONENT": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "STEP"
+  },
+  "PERMETTE_DI_DEFINIRE": {
+    "verb": "DEFINE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "PERMETTE_DI_OTTENERE": {
+    "verb": "OBTAIN",
+    "object": "INFORMATION",
+    "qualifier": ""
+  },
+  "PERMETTE_DI_RILEVARE": {
+    "verb": "REVEAL",
+    "object": "INFORMATION",
+    "qualifier": ""
+  },
+  "RIPRODUCE": {
+    "verb": "PRODUCE",
+    "object": "OUTPUT",
+    "qualifier": ""
+  },
+  "SI_BASA_SU": {
+    "verb": "BASE",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "VIENE_ANALIZZATO_DA": {
+    "verb": "ANALYZE",
+    "object": "ENTITY",
+    "qualifier": ""
+  },
+  "VIENE_MISURATO_TRAMITE": {
+    "verb": "MEASURE",
+    "object": "METHOD",
+    "qualifier": "TRAMITE"
+  },
+  "VIENE_UTILIZZATO_PER": {
+    "verb": "USE",
+    "object": "PURPOSE",
+    "qualifier": ""
+  },
+  "RATIO_OF": {
+    "verb": "COMPARE",
+    "object": "",
+    "qualifier": "OF"
+  },
+  "SUM_OF": {
+    "verb": "ADD",
+    "object": "",
+    "qualifier": ""
+  },
+  "SUDDIVISO_IN_BASE_A": {
+    "verb": "DIVIDE",
+    "object": "VALUES",
+    "qualifier": "BASE"
+  },
+  "VALORI_DI": {
+    "verb": "VALUE",
+    "object": "OF",
+    "qualifier": "DI"
+  },
+  "PROPONENT_OF": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "ATTENTI_A": {
+    "verb": "ATTENTION",
+    "object": "",
+    "qualifier": "A"
+  },
+  "DISTRIBUTED": {
+    "verb": "DISTRIBUTE",
+    "object": "",
+    "qualifier": ""
+  },
+  "DEDICATO_A": {
+    "verb": "DEDICATE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "INVESTIRE_I_SOLDI_MEGLIO_DEGLI": {
+    "verb": "INVEST",
+    "object": "MONEY",
+    "qualifier": "MEGLIO_DEGLI"
+  },
+  "RICHIEDONO_CHE_I_SOLDI_LAVORINO_NELLE_FORME_PI_ADA": {
+    "verb": "REQUIRE",
+    "object": "MONEY",
+    "qualifier": "NELLE_FORME_PI_ADA"
+  },
+  "SBAGLIARE_A_RITENERE_DI_ESSERE_IN_GRADO_DI_INVESTI": {
+    "verb": "ERR",
+    "object": "BELIEF",
+    "qualifier": "DI_ESSERE_IN_GRADO_DI_INVESTI"
+  },
+  "VALUTAZIONE_IN_BASE_A": {
+    "verb": "EVALUATE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "COMPETING_WITH": {
+    "verb": "COMPETE",
+    "object": "COMPANY",
+    "qualifier": ""
+  },
+  "MITIGATION_OF": {
+    "verb": "MITIGATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "BENCHMARK_FOR": {
+    "verb": "EVALUATE",
+    "object": "STANDARD",
+    "qualifier": ""
+  },
+  "CAN_INVOLVE": {
+    "verb": "INCLUDE",
+    "object": "",
+    "qualifier": "PARTICLES"
+  },
+  "FOCUS_ON": {
+    "verb": "CONCENTRATE",
+    "object": "",
+    "qualifier": "TOPIC"
+  },
+  "APPRECIATED_BY": {
+    "verb": "APPRECIATE",
+    "object": "PERSON",
+    "qualifier": ""
+  },
+  "CONSENTIR_DI_COPRIRSI_DA_EVENTUALI_SBAGLI_COMMESSI": {
+    "verb": "ACCEPT",
+    "object": "",
+    "qualifier": "ERRORS"
+  },
+  "DIPENDE_UNICAMENTE_DALLA_SENSIBILIT_AL_RISCHIO_DEL": {
+    "verb": "DEPENDS",
+    "object": "RISK SENSITIVITY",
+    "qualifier": ""
+  },
+  "IRRAZIONALIT_DEGLI_AGENTI_CHE_OPERANO_ALL_INTERNO_": {
+    "verb": "REASON",
+    "object": "",
+    "qualifier": "AGENTS"
+  },
+  "MOTIVATA_DA": {
+    "verb": "MOTIVATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "RIALLINEAMENTO_DEL_PREZZO_DELL_AZIONE_AL_SUO_VALOR": {
+    "verb": "ALIGN",
+    "object": "PRICE OF THE STOCK",
+    "qualifier": "VALUE"
+  },
+  "RICERCA_DI_UN_MARGINE_DI_SICUREZZA": {
+    "verb": "SEEK",
+    "object": "MARGIN OF SAFETY",
+    "qualifier": ""
+  },
+  "SECONDO_LA_QUALE_IL_PREZZO_DELL_AZIONE_SI_SAREBBE_": {
+    "verb": "BE",
+    "object": "PRICE OF THE STOCK",
+    "qualifier": ""
+  },
+  "SI_AGGIUSTEREBBE_ISTANTANEAMENTE_ELIMINANDO_OGNI_S": {
+    "verb": "ADJUST",
+    "object": "",
+    "qualifier": "RISK"
+  },
+  "SONO_IL_PUNTO_DI_PARTENZA_NELL_ELABORAZIONE_DI_UN_": {
+    "verb": "BE",
+    "object": "STARTING POINT",
+    "qualifier": "PROCESS"
+  },
+  "DERIVANTE_DAI_PROBLEMI_CHE_INTERESSANO": {
+    "verb": "ARISE",
+    "object": "PROBLEM",
+    "qualifier": ""
+  },
+  "DOVUTO_AL_FATTO_CHE": {
+    "verb": "DUE",
+    "object": "",
+    "qualifier": "FACT"
+  },
+  "ELIMINARE_IL_RISCHIO_DEFINITO_SPECIFICO_OVVERO_IL_": {
+    "verb": "ELIMINATE",
+    "object": "RISK",
+    "qualifier": ""
+  },
+  "FAMOSA_FRASE_DI": {
+    "verb": "QUOTE",
+    "object": "PHRASE",
+    "qualifier": ""
+  },
+  "METTE_IN_PRATICA": {
+    "verb": "IMPLEMENT",
+    "object": "",
+    "qualifier": "PRACTICALLY"
+  },
+  "MOSTRA_COME_L_AUMENTO_DEL_NUMERO_DI_TITOLI_IN_PORT": {
+    "verb": "SHOW",
+    "object": "INCREASE",
+    "qualifier": "NUMBER"
+  },
+  "CALCOLA_LA": {
+    "verb": "CALCULATE",
+    "object": "AMOUNT",
+    "qualifier": ""
+  },
+  "COSTRUISCE_IL": {
+    "verb": "BUILD",
+    "object": "IT",
+    "qualifier": ""
+  },
+  "DATA_DALLA": {
+    "verb": "DERIVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "DATO_DA": {
+    "verb": "DERIVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "EFFETTUA_SU": {
+    "verb": "EFFECT",
+    "object": "",
+    "qualifier": "ON"
+  },
+  "INFLUENZA_LA": {
+    "verb": "INFLENCE",
+    "object": "",
+    "qualifier": "THE"
+  },
+  "MISURA_DI": {
+    "verb": "MEASURE",
+    "object": "",
+    "qualifier": "OF"
+  },
+  "RIDUCE_IL": {
+    "verb": "REDUCE",
+    "object": "IT",
+    "qualifier": ""
+  },
+  "SOMMA_DI": {
+    "verb": "SUM",
+    "object": "",
+    "qualifier": "OF"
+  },
+  "AT_TIME_HORIZON_OF": {
+    "verb": "REACH",
+    "object": "HORIZON",
+    "qualifier": "OF"
+  },
+  "DISCOUNTED_AT_RATE_OF": {
+    "verb": "DISCOUNT",
+    "object": "VALUE",
+    "qualifier": "AT_RATE_OF"
+  },
+  "GROWTH_RATE_OF": {
+    "verb": "DEFINE",
+    "object": "RATE",
+    "qualifier": "OF"
+  },
+  "PROVIDES_ESTIMATES_FOR": {
+    "verb": "PROVIDE",
+    "object": "ESTIMATE",
+    "qualifier": "FOR"
+  },
+  "CONTAINS_INFORMATION": {
+    "verb": "PROVIDE",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "PROVIDED_DATA_ON": {
+    "verb": "PROVIDE",
+    "object": "INFORMATION",
+    "qualifier": ""
+  },
+  "VALUE_FOR": {
+    "verb": "SUPPORT",
+    "object": "ELECTIONS",
+    "qualifier": ""
+  },
+  "FINANCIAL_DATA": {
+    "verb": "VIEW",
+    "object": "",
+    "qualifier": ""
+  },
+  "DATA_PROVIDER": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "GROWTH_ESTIMATE": {
+    "verb": "REDUCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "P_E_FORWARD_MAXIMUM": {
+    "verb": "SET",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "P_E_FORWARD_MINIMUM": {
+    "verb": "SET",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "RENDIMENTO_MINIMO_ATTESO": {
+    "verb": "PREDICT",
+    "object": "",
+    "qualifier": ""
+  },
+  "RENAMED_TO": {
+    "verb": "REFER",
+    "object": "NAME",
+    "qualifier": ""
+  },
+  "HAS_EPS": {
+    "verb": "HAVE",
+    "object": "EARNINGS",
+    "qualifier": ""
+  },
+  "HAS_FCF": {
+    "verb": "HAVE",
+    "object": "CASHFLOW",
+    "qualifier": ""
+  },
+  "HAS_FCF_SHARE": {
+    "verb": "HAVE",
+    "object": "CASHFLOW_SHARE",
+    "qualifier": ""
+  },
+  "HAS_PROFIT": {
+    "verb": "HAVE",
+    "object": "PROFIT",
+    "qualifier": ""
+  },
+  "HAS_P_E_RATIO": {
+    "verb": "HAVE",
+    "object": "PRICE_EARNINGS_RATIO",
+    "qualifier": ""
+  },
+  "ANALYZES_FOR": {
+    "verb": "ANALYZE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "SECOND_LARGEST": {
+    "verb": "RANK",
+    "object": "CITY",
+    "qualifier": ""
+  },
+  "HAS_CURRENT_RATIO": {
+    "verb": "HAS",
+    "object": "RATIO",
+    "qualifier": ""
+  },
+  "HAS_DEBT_ASSET": {
+    "verb": "HAS",
+    "object": "DEBT_ASSET",
+    "qualifier": ""
+  },
+  "HAS_DEBT_EQUITY": {
+    "verb": "HAS",
+    "object": "DEBT_EQUITY",
+    "qualifier": ""
+  },
+  "HAS_DEBT_FCF": {
+    "verb": "HAS",
+    "object": "DEBT_FCF",
+    "qualifier": ""
+  },
+  "HAS_FREE_CASH_FLOW": {
+    "verb": "HAS",
+    "object": "FREE_CASH_FLOW",
+    "qualifier": ""
+  },
+  "HAS_LT_DEBT_EQUITY": {
+    "verb": "HAS",
+    "object": "LT_DEBT_EQUITY",
+    "qualifier": ""
+  },
+  "HAS_QUICK_RATIO": {
+    "verb": "HAS",
+    "object": "QUICK_RATIO",
+    "qualifier": ""
+  },
+  "HAS_SALES": {
+    "verb": "HAS",
+    "object": "SALES",
+    "qualifier": ""
+  },
+  "PERFORMANCE_COMPARISON": {
+    "verb": "COMPARE",
+    "object": "",
+    "qualifier": ""
+  },
+  "APPLIED_AS": {
+    "verb": "APPLY",
+    "object": "ROLE",
+    "qualifier": ""
+  },
+  "INVERSELY_RELATED_TO": {
+    "verb": "RELATE",
+    "object": "CONCEPT",
+    "qualifier": ""
+  },
+  "CONTAINS_INFORMATION_ABOUT": {
+    "verb": "CONTAIN",
+    "object": "INFORMATION",
+    "qualifier": ""
+  },
+  "ATTAINS": {
+    "verb": "ACHIEVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PART_OF_COMPARISON": {
+    "verb": "BE",
+    "object": "PART",
+    "qualifier": ""
+  },
+  "PRACTICED_BY": {
+    "verb": "PRACTICE",
+    "object": "SKILL",
+    "qualifier": "EMPTY"
+  },
+  "PRINCIPLE": {
+    "verb": "APPLY",
+    "object": "PRINCIPLE",
+    "qualifier": "EMPTY"
+  },
+  "TECHNIQUE_USED_IN": {
+    "verb": "USE",
+    "object": "TECHNIQUE",
+    "qualifier": "EMPTY"
+  },
+  "INIZIA_UNA_COLLABORAZIONE": {
+    "verb": "START",
+    "object": "COLLABORATION",
+    "qualifier": ""
+  },
+  "NEGOTIA": {
+    "verb": "NEGOTIATE",
+    "object": "AGREEMENT",
+    "qualifier": ""
+  },
+  "COMUNICATO_PRESSO_IL_PUBBLICO": {
+    "verb": "ANNOUNCE",
+    "object": "STATEMENT",
+    "qualifier": "TO THE PUBLIC"
+  },
+  "SAME_AS": {
+    "verb": "IDENTIFY",
+    "object": "",
+    "qualifier": ""
+  },
+  "COMPETIZIONE_ECONOMICA": {
+    "verb": "INFLUENCE",
+    "object": "",
+    "qualifier": "ECONOMICA"
+  },
+  "INFLUENZATO": {
+    "verb": "INFLUENCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "VENDUTO": {
+    "verb": "SELL",
+    "object": "",
+    "qualifier": ""
+  },
+  "HA_BISOGNO_DI": {
+    "verb": "NEED",
+    "object": "",
+    "qualifier": ""
+  },
+  "NON_VOGLIO_PI": {
+    "verb": "WANT",
+    "object": "",
+    "qualifier": ""
+  },
+  "PER_COMPRARE": {
+    "verb": "BUY",
+    "object": "",
+    "qualifier": "FOR"
+  },
+  "PROTEGGERE_CONTRO": {
+    "verb": "PROTECT",
+    "object": "",
+    "qualifier": "AGAINST"
+  },
+  "STAMPA": {
+    "verb": "PRINT",
+    "object": "",
+    "qualifier": ""
+  },
+  "USER": {
+    "verb": "BE",
+    "object": "",
+    "qualifier": ""
+  },
+  "EXPORTS_TO": {
+    "verb": "EXPORT",
+    "object": "GOODS",
+    "qualifier": ""
+  },
+  "FINANCED": {
+    "verb": "FINANCE",
+    "object": "",
+    "qualifier": ""
+  },
+  "PAYS_WITH": {
+    "verb": "PAY",
+    "object": "CURRENCY",
+    "qualifier": ""
+  },
+  "BLOCCATO_ESPORTAZIONI_TECNOLOGICHE": {
+    "verb": "BLOCK",
+    "object": "TECHNOLOGIES",
+    "qualifier": "EXPORTATIONS"
+  },
+  "CONFISCATO": {
+    "verb": "SEIZE",
+    "object": "",
+    "qualifier": ""
+  },
+  "COSTRUITO_ALLEANZE_MILITARI": {
+    "verb": "BUILD",
+    "object": "ALLIANCES",
+    "qualifier": "MILITARY"
+  },
+  "DIFESA_MILITARE": {
+    "verb": "DEFEND",
+    "object": "MILITARY",
+    "qualifier": ""
+  },
+  "IDENTIFICATO_COME": {
+    "verb": "IDENTIFY",
+    "object": "",
+    "qualifier": "AS"
+  },
+  "IMPOSTO_TARIFFE": {
+    "verb": "SET",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "RIDOTTO": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "VISTO_COME": {
+    "verb": "VIEW",
+    "object": "",
+    "qualifier": "AS"
+  },
+  "ATTRAVERSO_LA_NOSTRA_ORGANIZZAZIONE_COLLETTIVA": {
+    "verb": "ATRAVES",
+    "object": "ORGANIZATION",
+    "qualifier": ""
+  },
+  "ATTRAVERSO_LA_NOSTRA_VOLONT_INCROLLABILE_DI_IMMAGI": {
+    "verb": "ATRAVESS",
+    "object": "IMAGERY",
+    "qualifier": ""
+  },
+  "ATTRAVERSO_LE_NOSTRE_LOTTE_QUOTIDIANE": {
+    "verb": "ATRAVESS",
+    "object": "DAILY_STRUGGLES",
+    "qualifier": ""
+  },
+  "OPPURE_PU_ANDARE_VERSO_UN_SISTEMA_GENUINAMENTE_PI_": {
+    "verb": "GO",
+    "object": "SYSTEM",
+    "qualifier": "GENUINAMENTE"
+  },
+  "PIENA_DI_ESEMPI_ISPIRANTI_DI": {
+    "verb": "FULL",
+    "object": "EXAMPLES",
+    "qualifier": "INSPIRING"
+  },
+  "PI_DEMOCRATICO": {
+    "verb": "BE",
+    "object": "DEMOCRATIC",
+    "qualifier": ""
+  },
+  "PI_PARTECIPATIVO": {
+    "verb": "BE",
+    "object": "PARTICIPATORY",
+    "qualifier": ""
+  },
+  "PI_SOSTENIBILE_AMBIENTALMENTE": {
+    "verb": "BE",
+    "object": "SUSTAINABLE",
+    "qualifier": "ENVIRONMENTALLY"
+  },
+  "PU_ANDARE_VERSO_PI_AUTORITARISMO_POLITICO": {
+    "verb": "GO",
+    "object": "POLITICAL_AUTHORITARISM",
+    "qualifier": ""
+  },
+  "PU_ANDARE_VERSO_PI_CAOS_DISTRUTTIVO": {
+    "verb": "GO",
+    "object": "DESTRUCTIVE_CHAOS",
+    "qualifier": ""
+  },
+  "PU_ANDARE_VERSO_PI_CONFLITTO_MILITARE": {
+    "verb": "GO",
+    "object": "MILITARY_CONFLICT",
+    "qualifier": ""
+  },
+  "QUANDO_SI_ORGANIZZA_COLLETTIVAMENTE_CON_UNO_SCOPO_": {
+    "verb": "ORGANIZE",
+    "object": "PURPOSE",
+    "qualifier": ""
+  },
+  "QUELLA_SCELTA_STORICA_LA_FAREMO_NOI_TUTTI_NOI_INSI": {
+    "verb": "MAKE",
+    "object": "HISTORICAL_CHOICE",
+    "qualifier": ""
+  },
+  "SI_ORGANIZZA_COLLETTIVAMENTE_CON": {
+    "verb": "ORGANIZE",
+    "object": "COLLECTIVELY",
+    "qualifier": ""
+  },
+  "STA_CAMBIANDO_FONDAMENTALMENTE_DAVANTI_AI_NOSTRI_O": {
+    "verb": "CHANGE",
+    "object": "BEFORE",
+    "qualifier": "FUNDAMENTALLY"
+  },
+  "DOMINIO": {
+    "verb": "GOVERN",
+    "object": "FIELD",
+    "qualifier": ""
+  },
+  "LOTTA_PER_CAMBIAMENTO": {
+    "verb": "STRUGGLE",
+    "object": "CHANGE",
+    "qualifier": ""
+  },
+  "POTERE_ECONOMICO": {
+    "verb": "HAVE",
+    "object": "POWER",
+    "qualifier": ""
+  },
+  "SCRITTURA_REGOLE_SISTEMA": {
+    "verb": "WRITE",
+    "object": "RULES",
+    "qualifier": "SYSTEM"
+  },
+  "VENDITA_TITOLI_DEL_TESORO": {
+    "verb": "SELL",
+    "object": "BONDS",
     "qualifier": ""
   }
 }
