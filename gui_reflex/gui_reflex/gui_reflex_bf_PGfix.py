@@ -821,29 +821,24 @@ def search_pg_bm25(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
     if not PG_ENRICH_ENABLED or not pg_pool: return []
     if not query_text.strip(): return []
 
-    # FIX: Creazione di una stringa con operatore OR (|) basata sui token principali
-    tokens = [w for w in query_text.split() if len(w) > 3]
-    if not tokens: return []
-    pg_query = " | ".join(tokens) 
-
-    # Usiamo to_tsquery al posto di websearch_to_tsquery
+    # Usiamo websearch_to_tsquery che è il più robusto (gestisce "virgolette", OR, ecc.)
     sql = """
     SELECT chunk_uuid::text, content_raw, content_semantic, metadata_json,
         ts_rank_cd(
             to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')), 
-            to_tsquery('simple', %s)
+            websearch_to_tsquery('simple', %s)
         ) AS rank
     FROM public.document_chunks
     WHERE 
         to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')) 
-        @@ to_tsquery('simple', %s)
+        @@ websearch_to_tsquery('simple', %s)
     ORDER BY rank DESC LIMIT %s;
     """
     
     conn = pg_pool.getconn()
     try:
         with conn.cursor() as cur:
-            cur.execute(sql, (pg_query, pg_query, limit))
+            cur.execute(sql, (query_text, query_text, limit))
             rows = cur.fetchall()
             return [{
                 "id": r[0], "content": r[2] or r[1], "metadata": r[3] or {}, "score": float(r[4])
@@ -955,7 +950,7 @@ def apply_rrf_scoring(candidates: List[Dict[str, Any]], k: int = 60):
 
 def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     """
-    Retrieval V4: DEBUG ESTREMO + FILENAME FORCING + GRAPH EXPANSION.
+    Retrieval V4: DEBUG ESTREMO + FILENAME FORCING.
     """
     print(f"\n\n{'='*40}")
     print(f"🔎 DEBUG RETRIEVAL START")
@@ -978,6 +973,7 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     t0 = time.time()
     hits = []
     try:
+        # Prendiamo pochi candidati ma buoni
         hits = qdrant_client_inst.search(
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
@@ -992,6 +988,7 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
 
     # 3) Postgres (Keyword)
     t0 = time.time()
+    # Usiamo un limite alto per essere sicuri di pescare il file se c'è
     bm25_hits = search_pg_bm25(query_text, limit=40) 
     counts["bm25_hits"] = len(bm25_hits)
     print(f"🐘 Postgres ha trovato {len(bm25_hits)} chunk.")
@@ -1030,40 +1027,10 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
                 "page": int(meta.get("page_no") or 0),
                 "type": meta.get("toon_type", "text"),
                 "tier": meta.get("tier", "C"),
-                "score_base": 0.0, 
+                "score_base": 0.0, # Verrà aggiornato dopo
                 "origin": "Postgres",
                 "section_hint": meta.get("section_hint", "")
             }
-
-    # === INIZIO FIX: GRAPH EXPANSION (Neo4j) ===
-    if GRAPH_EXPAND_ENABLED and neo4j_driver:
-        t0_graph = time.time()
-        # 1. Usiamo i top hit di Qdrant come nodi di partenza (seed)
-        seed_ids = [str(hit.id) for hit in hits][:10]
-        
-        # 2. Troviamo i chunk vicini navigando il Grafo
-        neighbor_ids = get_neighbor_chunk_ids(seed_ids, limit=5)
-        
-        # 3. Scarichiamo il testo di questi nuovi chunk da Qdrant
-        if neighbor_ids:
-            graph_sources = fetch_chunks_from_qdrant_by_ids(neighbor_ids)
-            for gs in graph_sources:
-                if gs.id not in candidates_dict:
-                    candidates_dict[gs.id] = {
-                        "id": gs.id,
-                        "content": gs.content,
-                        "filename": gs.filename,
-                        "page": gs.page,
-                        "type": gs.type,
-                        "tier": getattr(gs, "tier", "C"),
-                        "score_base": 0.5, # Verrà poi affinato dal reranker
-                        "origin": "Neo4j_Expansion",
-                        "section_hint": getattr(gs, "section_hint", "")
-                    }
-            counts["neo4j_hits"] = len(graph_sources)
-            print(f"🕸️ Neo4j ha aggiunto {len(graph_sources)} chunk semanticamente collegati.")
-        timings["graph"] = time.time() - t0_graph
-    # === FINE FIX: GRAPH EXPANSION ===
 
     candidates = list(candidates_dict.values())
     if not candidates:
@@ -1072,30 +1039,44 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
 
 
     # 5) SCORING INTELLIGENTE & FILENAME BOOST (HARD MODE)
+    # Prepariamo token query (parole > 3 lettere) per catturare anche "WACC", "Table", ecc.
+    # RIMOSSO IL LIMITE [:2] per analizzare tutta la frase, non solo le parole più lunghe.
     query_tokens = [w.lower() for w in query_text.split() if len(w) > 3]
+    
     print(f"🎯 Target Tokens (Filename Match): {query_tokens}")
 
     for c in candidates:
         fname_lower = (c.get("filename") or "").lower()
+        
+        # LOGICA BRUTALE: Se il nome file è nella query, questo chunk DEVE vincere.
         boost = 0.0
         hits_fname = 0
         
+        # 1. Match Esatto Parziale (es. "Formulae_Table.pdf" contiene "formulae")
         for token in query_tokens:
             if token in fname_lower:
+                # Escludiamo parole troppo comuni per evitare falsi positivi
                 if token not in ["della", "delle", "file", "documento", "page", "pagina"]:
                     hits_fname += 1
         
+        # 2. Assegnazione Boost: +5.0 punti portano il documento in Cima Assoluta
         if hits_fname > 0:
             boost = 5.0 * hits_fname  
             c["origin"] += " [TARGET FILE]"
             print(f"   🚀 SUPER BOOST per {c.get('filename')} (Match: {hits_fname} token)")
 
+        # Score base + SUPER BOOST
         c["final_score"] = float(c.get("score_base", 0.0)) + boost
 
     # 6) RERANKING SELETTIVO
+    # Mandiamo al reranker SOLO chi non ha già vinto per filename match
+    # Questo salva un sacco di tempo e previene che il reranker abbassi il target
+    
+    # Separiamo i "Vincitori sicuri" (Target File) dagli altri
     winners = [c for c in candidates if c["final_score"] > 400]
     others = [c for c in candidates if c["final_score"] <= 400]
     
+    # Rerankiamo solo gli "others" (i top 15)
     others.sort(key=lambda x: x["final_score"], reverse=True)
     top_others = others[:15]
     
@@ -1105,15 +1086,17 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
         try:
             scores = reranker.predict(pairs)
             for i, score in enumerate(scores):
-                top_others[i]["final_score"] = float(score)
+                top_others[i]["final_score"] = float(score) # Score normale del reranker
         except Exception as e:
             print(f"⚠️ Reranker Error: {e}")
         timings["rerank"] = time.time() - t0
     
+    # Riuniamo tutto: Vincitori (Score 500+) + Altri Rerankati
     final_pool = winners + top_others
     final_pool.sort(key=lambda x: x["final_score"], reverse=True)
     
     # 7) Selezione Finale (DIVERSIFY)
+    # Riduciamo a 5 fonti massime per evitare blocchi LLM
     final_selection = diversify(final_pool, MAX_PER_PAGE, MAX_PER_DOC, 5)
 
     print("-" * 20)
@@ -1137,10 +1120,10 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
             section_hint=t.get("section_hint", "")
         ))
 
-    # Graph Formule finali
+    # Graph (opzionale, teniamolo leggero)
     if GRAPH_EXPAND_ENABLED and neo4j_driver:
         chunk_ids = [s.id for s in sources]
-        formulas = get_formulas_for_chunks(chunk_ids, limit=2)
+        formulas = get_formulas_for_chunks(chunk_ids, limit=2) # Solo 2 formule max
         if formulas:
             sources.append(SourceItem(
                 id="graph", 
@@ -1149,7 +1132,6 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
             ))
 
     return sources, build_retrieval_audit_md(query_text, intent, timings, counts, [])
-
 
 def build_context_block(sources: List[SourceItem], max_chars: int = MAX_CONTEXT_CHARS) -> str:
     """Build context with strong provenance and caps."""

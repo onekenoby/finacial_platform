@@ -32633,5 +32633,380 @@
     "verb": "SELL",
     "object": "BONDS",
     "qualifier": ""
+  },
+  "THRESHOLD_FOR": {
+    "verb": "SET",
+    "object": "LIMIT",
+    "qualifier": ""
+  },
+  "CHAIR": {
+    "verb": "DEVELOP",
+    "object": "PLATFORM",
+    "qualifier": "IMPORT"
+  },
+  "DEVELOPING_PLATFORM": {
+    "verb": "DEVELOP",
+    "object": "PLATFORM",
+    "qualifier": ""
+  },
+  "IMPORTANT": {
+    "verb": "HAVE",
+    "object": "IMPACT",
+    "qualifier": "INDIRECT"
+  },
+  "INDIRECT_IMPACT": {
+    "verb": "HAVE",
+    "object": "IMPACT",
+    "qualifier": ""
+  },
+  "LIMITED_EXPOSURE": {
+    "verb": "HAVE",
+    "object": "EXPOSURE",
+    "qualifier": ""
+  },
+  "ZERO_SUM_REJECTION": {
+    "verb": "REJECT",
+    "object": "SUM",
+    "qualifier": "ZERO"
+  },
+  "ENDS_WHEN": {
+    "verb": "END",
+    "object": "",
+    "qualifier": "WHEN"
+  },
+  "FLOWS_TO": {
+    "verb": "FLOW",
+    "object": "",
+    "qualifier": "TO"
+  },
+  "KEY_EVENT": {
+    "verb": "OCCUR",
+    "object": "",
+    "qualifier": ""
+  },
+  "PRICE_USD": {
+    "verb": "SET",
+    "object": "PRICE",
+    "qualifier": ""
+  },
+  "SUPPORT_RESISTANCE": {
+    "verb": "HAVE",
+    "object": "",
+    "qualifier": "LEVEL"
+  },
+  "TREND_DESCRIPTION": {
+    "verb": "DESCRIBE",
+    "object": "TREND",
+    "qualifier": ""
+  },
+  "BOUGHT": {
+    "verb": "PURCHASE",
+    "object": "",
+    "qualifier": "ABOUT"
+  },
+  "CHANGE_FROM": {
+    "verb": "CHANGE",
+    "object": "",
+    "qualifier": "FROM"
+  },
+  "RESISTANCE_AT": {
+    "verb": "RESIST",
+    "object": "",
+    "qualifier": "AT"
+  },
+  "STATUS": {
+    "verb": "HAVE",
+    "object": "STATUS",
+    "qualifier": ""
+  },
+  "SUPPORT_NEAR": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "NEAR"
+  },
+  "LARGEST_UPWARD_ADJUSTMENT_SINCE": {
+    "verb": "ADJUST",
+    "object": "",
+    "qualifier": "SINCE"
+  },
+  "TESTED_AS_SUPPORT_LEVEL": {
+    "verb": "TEST",
+    "object": "LEVEL",
+    "qualifier": "AS_SUPPORT"
+  },
+  "VALUE_AS_OF": {
+    "verb": "HAVE",
+    "object": "VALUE",
+    "qualifier": "AS_OF"
+  },
+  "SENTIMENT": {
+    "verb": "EXPRESS",
+    "object": "",
+    "qualifier": ""
+  },
+  "KEY_DRIVER": {
+    "verb": "DRIVE",
+    "object": "FACTOR",
+    "qualifier": ""
+  },
+  "YTD_CHANGE": {
+    "verb": "CHANGE",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "CALCULATION_METHOD": {
+    "verb": "DETERMINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "SENTIMENT_TOWARDS": {
+    "verb": "EXPRESS",
+    "object": "",
+    "qualifier": ""
+  },
+  "SOURCE_OF_INFORMATION": {
+    "verb": "BE",
+    "object": "SOURCE",
+    "qualifier": ""
+  },
+  "EXPECTED_TO_STRENGTHEN_AHEAD_OF": {
+    "verb": "STRENGTHEN",
+    "object": "",
+    "qualifier": "AHEAD_OF"
+  },
+  "INDICATOR_OF": {
+    "verb": "INDICATE",
+    "object": "",
+    "qualifier": "OF"
+  },
+  "PROBABILITY_IN": {
+    "verb": "BE",
+    "object": "PROBABILITY",
+    "qualifier": "IN"
+  },
+  "CHANGE_USD": {
+    "verb": "CHANGE",
+    "object": "VALUE_USD",
+    "qualifier": ""
+  },
+  "EFFECT": {
+    "verb": "EFFECT",
+    "object": "",
+    "qualifier": ""
+  },
+  "RESISTANCE": {
+    "verb": "RESIST",
+    "object": "",
+    "qualifier": ""
+  },
+  "TREND_IMPLICATION": {
+    "verb": "IMPLY",
+    "object": "TREND",
+    "qualifier": ""
+  },
+  "VALUE_USD": {
+    "verb": "HAVE",
+    "object": "VALUE_USD",
+    "qualifier": ""
+  },
+  "MEMBERSHIP": {
+    "verb": "BELONG",
+    "object": "",
+    "qualifier": ""
+  },
+  "POLICY_INFLUENCE": {
+    "verb": "INFLUENCE",
+    "object": "POLICY",
+    "qualifier": ""
+  },
+  "POTENTIAL_ADOPTION": {
+    "verb": "ADOPT",
+    "object": "",
+    "qualifier": "POTENTIAL"
+  },
+  "STABILITY": {
+    "verb": "HAVE",
+    "object": "STABILITY",
+    "qualifier": ""
+  },
+  "TENSION": {
+    "verb": "EXIST",
+    "object": "TENSION",
+    "qualifier": ""
+  },
+  "MACRO_IMPACT": {
+    "verb": "IMPACT",
+    "object": "ECONOMY",
+    "qualifier": ""
+  },
+  "DESTABILIZING_IMPACT": {
+    "verb": "AFFECT",
+    "object": "IMPACT",
+    "qualifier": "IMPACT"
+  },
+  "INDIRECTLY_AFFECTED_BY": {
+    "verb": "AFFECT",
+    "object": "",
+    "qualifier": "BY"
+  },
+  "OUTPERFORMANCE_DURING": {
+    "verb": "OUTPERFORM",
+    "object": "PERFORMANCE",
+    "qualifier": "DURING"
+  },
+  "SAFE_HAVEN_ASSET": {
+    "verb": "BE",
+    "object": "ASSET",
+    "qualifier": "SAFE_HAVEN"
+  },
+  "SHORT_POSITION": {
+    "verb": "TAKE",
+    "object": "POSITION",
+    "qualifier": "SHORT"
+  },
+  "TREND": {
+    "verb": "BE",
+    "object": "TREND",
+    "qualifier": ""
+  },
+  "UNDERPERFORMANCE_DURING": {
+    "verb": "UNDERPERFORM",
+    "object": "PERFORMANCE",
+    "qualifier": "DURING"
+  },
+  "CAN_INDICATE": {
+    "verb": "INDICATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "HAS_GAP_LEVEL_AT": {
+    "verb": "HAVE",
+    "object": "GAP_LEVEL",
+    "qualifier": ""
+  },
+  "HAS_RESISTANCE_LEVEL_AT": {
+    "verb": "HAVE",
+    "object": "RESISTANCE_LEVEL",
+    "qualifier": ""
+  },
+  "DESCRIZIONE": {
+    "verb": "DESCRIBE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "METRICA": {
+    "verb": "MEASURE",
+    "object": "QUANTITY",
+    "qualifier": ""
+  },
+  "INVERSELY_MOVES": {
+    "verb": "MOVE",
+    "object": "",
+    "qualifier": "INVERSELY"
+  },
+  "BULLISH_CATALYST_FOR": {
+    "verb": "SUPPORT",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "EXPECTS_INSTITUTIONAL_DEMAND_TO_OUTWEIGH_RETAIL_EX": {
+    "verb": "EXPECTS",
+    "object": "DEMAND",
+    "qualifier": ""
+  },
+  "GEOPOLITICAL_SANCTIONS": {
+    "verb": "IMPOSE",
+    "object": "SANCTIONS",
+    "qualifier": ""
+  },
+  "VOLATILITY_AS_A_SAFE_HAVEN_ASSET_POST_SANCTIONS": {
+    "verb": "CONSIDER",
+    "object": "VOLATILITY",
+    "qualifier": ""
+  },
+  "MINE": {
+    "verb": "MINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "POLICY_IMPACT": {
+    "verb": "IMPACT",
+    "object": "POLICY",
+    "qualifier": ""
+  },
+  "INDIRECTLY_BULLISH_ON": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "ON"
+  },
+  "AVERAGE_REALIZED_PRICE": {
+    "verb": "DETERMINED",
+    "object": "",
+    "qualifier": ""
+  },
+  "INDIRECTLY_INFLUENCED_BY": {
+    "verb": "AFFECT",
+    "object": "",
+    "qualifier": "BY"
+  },
+  "INDIRECT_INSIGHTS_FOR": {
+    "verb": "PROVIDE",
+    "object": "INSIGHTS",
+    "qualifier": "FOR"
+  },
+  "PRICE_THRESHOLD_FOR": {
+    "verb": "SET",
+    "object": "THRESHOLD",
+    "qualifier": "FOR"
+  },
+  "SENTIMENT_IF": {
+    "verb": "DETERMINE",
+    "object": "SENTIMENT",
+    "qualifier": "IF"
+  },
+  "COVERED_BY": {
+    "verb": "COVER",
+    "object": "",
+    "qualifier": ""
+  },
+  "INFLUENCES_PRICE": {
+    "verb": "INFLUENCE",
+    "object": "PRICE",
+    "qualifier": ""
+  },
+  "STRUCK_DOWN": {
+    "verb": "STRIKE",
+    "object": "",
+    "qualifier": "DOWN"
+  },
+  "CONTAINS_COMPANY": {
+    "verb": "CONTAIN",
+    "object": "COMPANY",
+    "qualifier": ""
+  },
+  "METRIC_OF": {
+    "verb": "DEFINE",
+    "object": "",
+    "qualifier": ""
+  },
+  "IMPLIES_INTERPRETATION": {
+    "verb": "IMPLY",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "PROJECTS": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": ""
+  },
+  "ARGUES_ABOUT": {
+    "verb": "ARGUE",
+    "object": "TOPIC",
+    "qualifier": "ABOUT"
+  },
+  "RISKS_BEING": {
+    "verb": "RISK",
+    "object": "EMPTY",
+    "qualifier": "BEING"
   }
 }
