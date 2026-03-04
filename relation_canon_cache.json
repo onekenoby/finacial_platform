@@ -321,8 +321,8 @@
   },
   "ACCUSE_OF": {
     "verb": "ACCUSE",
-    "object": "PERSON",
-    "qualifier": ""
+    "object": "CRIME",
+    "qualifier": "OF"
   },
   "CONCERNING": {
     "verb": "CONCERN",
@@ -356,7 +356,7 @@
   },
   "APPROACH": {
     "verb": "APPROACH",
-    "object": "",
+    "object": "TARGET",
     "qualifier": ""
   },
   "SEEK_TO_INCREASE_EXPORT": {
@@ -13266,7 +13266,7 @@
   },
   "VISITA": {
     "verb": "VISIT",
-    "object": "CITY",
+    "object": "COUNTRY",
     "qualifier": ""
   },
   "REPRESENTS_THREAT_FOR": {
@@ -13986,7 +13986,7 @@
   },
   "ACCUSE": {
     "verb": "ACCUSE",
-    "object": "PERSON",
+    "object": "",
     "qualifier": ""
   },
   "MENTION": {
@@ -14396,7 +14396,7 @@
   },
   "SUPPORT": {
     "verb": "SUPPORT",
-    "object": "",
+    "object": "COUNTRY",
     "qualifier": ""
   },
   "ACQUIRED_THROUGH": {
@@ -14481,7 +14481,7 @@
   },
   "MEET": {
     "verb": "MEET",
-    "object": "",
+    "object": "PERSON",
     "qualifier": ""
   },
   "REVEAL": {
@@ -17647,7 +17647,7 @@
   "RESPOND_TO": {
     "verb": "RESPOND",
     "object": "REQUEST",
-    "qualifier": ""
+    "qualifier": "TO"
   },
   "TREAT": {
     "verb": "TREAT",
@@ -33008,5 +33008,955 @@
     "verb": "RISK",
     "object": "EMPTY",
     "qualifier": "BEING"
+  },
+  "OPERATOR": {
+    "verb": "OPERATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "TRADED_UNDER": {
+    "verb": "TRADE",
+    "object": "GOODS",
+    "qualifier": ""
+  },
+  "DISRUPTION_IMPACT": {
+    "verb": "AFFECT",
+    "object": "IMPACT",
+    "qualifier": ""
+  },
+  "ERODES": {
+    "verb": "ERODE",
+    "object": "",
+    "qualifier": ""
+  },
+  "EVENT_AT": {
+    "verb": "OCCUR",
+    "object": "LOCATION",
+    "qualifier": ""
+  },
+  "INDIRECTLY_AFFECTS": {
+    "verb": "AFFECT",
+    "object": "",
+    "qualifier": "INDIRECTLY"
+  },
+  "MEDIATES": {
+    "verb": "MEDIATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "POTENTIAL_SIGNAL": {
+    "verb": "SIGNAL",
+    "object": "",
+    "qualifier": ""
+  },
+  "PRICE_AT": {
+    "verb": "SET",
+    "object": "PRICE",
+    "qualifier": ""
+  },
+  "SUPPORT_LEVEL_AT": {
+    "verb": "REACH",
+    "object": "LEVEL",
+    "qualifier": ""
+  },
+  "BLOCKS": {
+    "verb": "BLOCK",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONFLICT": {
+    "verb": "CONFLICT",
+    "object": "",
+    "qualifier": ""
+  },
+  "COUNTERACTS": {
+    "verb": "COUNTERACT",
+    "object": "",
+    "qualifier": ""
+  },
+  "OPERATES": {
+    "verb": "OPERATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CAUSES_INCREASE_IN": {
+    "verb": "CAUSE",
+    "object": "INCREASE",
+    "qualifier": ""
+  },
+  "EXPERIENCED_CHANGE": {
+    "verb": "EXPERIENCE",
+    "object": "",
+    "qualifier": "CHANGE"
+  },
+  "IS_IN_STATE": {
+    "verb": "BE",
+    "object": "STATE",
+    "qualifier": ""
+  },
+  "REPRESENTS_PERCENTAGE": {
+    "verb": "REPRESENT",
+    "object": "PERCENTAGE",
+    "qualifier": ""
+  },
+  "CAUSES_INCREASE": {
+    "verb": "CAUSES",
+    "object": "INCREASE",
+    "qualifier": ""
+  },
+  "DRIVES_INCREASE": {
+    "verb": "DRIVES",
+    "object": "INCREASE",
+    "qualifier": ""
+  },
+  "INVERSELY_INFLUENCES": {
+    "verb": "INFLUENCE",
+    "object": "",
+    "qualifier": "INVERSELY"
+  },
+  "NEWS_DATE": {
+    "verb": "INDICATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "OPERATIONAL_LOCATION": {
+    "verb": "HAVE",
+    "object": "LOCATION",
+    "qualifier": ""
+  },
+  "TICKER_SYMBOL": {
+    "verb": "BE",
+    "object": "SYMBOL",
+    "qualifier": ""
+  },
+  "SHOWS_CHANGE": {
+    "verb": "SHOW",
+    "object": "CHANGE",
+    "qualifier": ""
+  },
+  "DIRECT_PROPORTIONALITY": {
+    "verb": "CORRELATE",
+    "object": "VARIABLE",
+    "qualifier": ""
+  },
+  "INVERSE_PROPORTIONALITY": {
+    "verb": "CORRELATE",
+    "object": "VARIABLE",
+    "qualifier": ""
+  },
+  "COMMENTED_ON": {
+    "verb": "COMMENT",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "CREATED_CHART_ABOUT": {
+    "verb": "CREATE",
+    "object": "CHART",
+    "qualifier": "ABOUT"
+  },
+  "HAS_METRIC": {
+    "verb": "HAVE",
+    "object": "METRIC",
+    "qualifier": ""
+  },
+  "BENEFICIARY_OF": {
+    "verb": "RECEIVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "GAIN_FROM": {
+    "verb": "BENEFITS",
+    "object": "",
+    "qualifier": ""
+  },
+  "MACRO_LEVEL_IMPLICATION_FOR": {
+    "verb": "IMPACT",
+    "object": "ECONOMY",
+    "qualifier": ""
+  },
+  "SHOWS_MUTED_GROWTH_AMID_OPERATIONAL_IMPROVEMENTS": {
+    "verb": "SHOW",
+    "object": "GROWTH",
+    "qualifier": "AMID_OPERATIONAL_IMPROVEMENTS"
+  },
+  "UNDER_NEW_LEADERSHIP_POST_WARREN_BUFFETT": {
+    "verb": "LEAD",
+    "object": "",
+    "qualifier": "POST_WARREN_BUFFETT"
+  },
+  "CORRELATION": {
+    "verb": "RELATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "INDIRECT_BENEFIT": {
+    "verb": "PROVIDE",
+    "object": "BENEFIT",
+    "qualifier": ""
+  },
+  "SEASONAL_TREND": {
+    "verb": "SHOW",
+    "object": "TREND",
+    "qualifier": ""
+  },
+  "PRESENTS_DATA": {
+    "verb": "PRESENT",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "REFERENCED_IN": {
+    "verb": "REFER",
+    "object": "STATEMENT",
+    "qualifier": "IN"
+  },
+  "BEARISH": {
+    "verb": "INDICATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "BULLISH": {
+    "verb": "INDICATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "ELEVATED_DEMAND": {
+    "verb": "HAVE",
+    "object": "DEMAND",
+    "qualifier": ""
+  },
+  "IMPLIED_BY": {
+    "verb": "IMPLY",
+    "object": "",
+    "qualifier": ""
+  },
+  "POSITIVE_PERFORMANCE": {
+    "verb": "INDICATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "MAINTAINED": {
+    "verb": "MAINTAIN",
+    "object": "",
+    "qualifier": ""
+  },
+  "NEUTRAL": {
+    "verb": "BE",
+    "object": "POSITION",
+    "qualifier": ""
+  },
+  "STABLE": {
+    "verb": "BE",
+    "object": "CONDITION",
+    "qualifier": ""
+  },
+  "DATA_INVOLVES": {
+    "verb": "INVOLVE",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "POSSIBLE_MACRO_IMPACT": {
+    "verb": "IMPACT",
+    "object": "ECONOMY",
+    "qualifier": ""
+  },
+  "POSSIBLE_SENTIMENT": {
+    "verb": "EXPRESS",
+    "object": "OPINION",
+    "qualifier": ""
+  },
+  "IMPLIED_IMPACT": {
+    "verb": "IMPACT",
+    "object": "",
+    "qualifier": ""
+  },
+  "DETERMINAZIONE_DI": {
+    "verb": "DECLARE",
+    "object": "STATEMENT",
+    "qualifier": "DI"
+  },
+  "DIPENDENTE_DA": {
+    "verb": "DEPEND",
+    "object": "FACTOR",
+    "qualifier": "DA"
+  },
+  "LOGARITHMIC_TRANSFORMATION": {
+    "verb": "TRANSFORM",
+    "object": "DATA",
+    "qualifier": "TRANSFORMATION"
+  },
+  "CONSIDERED_IN": {
+    "verb": "CONSIDER",
+    "object": "FACTOR",
+    "qualifier": "IN"
+  },
+  "USED_FOR_DETERMINING": {
+    "verb": "USE",
+    "object": "DETERMINATION",
+    "qualifier": "FOR"
+  },
+  "TAKESPLACEON": {
+    "verb": "OCCURS",
+    "object": "PLACE",
+    "qualifier": ""
+  },
+  "CONTENERE": {
+    "verb": "CONTAIN",
+    "object": "THING",
+    "qualifier": ""
+  },
+  "INTERVENIRE": {
+    "verb": "INTERVENE",
+    "object": "EVENT",
+    "qualifier": ""
+  },
+  "MOSTRARE": {
+    "verb": "SHOW",
+    "object": "THING",
+    "qualifier": ""
+  },
+  "RELAZIONARE": {
+    "verb": "RELATE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "VISUALIZZARE": {
+    "verb": "VISUALIZE",
+    "object": "THING",
+    "qualifier": ""
+  },
+  "FUNZIONA_CON": {
+    "verb": "WORKS_WITH",
+    "object": "",
+    "qualifier": "CON"
+  },
+  "CENSIMENTO": {
+    "verb": "TAKE",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "PARTECIPA": {
+    "verb": "PARTICIPATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "RISPONDE": {
+    "verb": "RESPOND",
+    "object": "REQUEST",
+    "qualifier": ""
+  },
+  "APRI": {
+    "verb": "OPEN",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONDIVIDI": {
+    "verb": "SHARE",
+    "object": "",
+    "qualifier": ""
+  },
+  "SCARICATO": {
+    "verb": "DOWNLOAD",
+    "object": "",
+    "qualifier": ""
+  },
+  "SPIEGA": {
+    "verb": "EXPLAIN",
+    "object": "",
+    "qualifier": ""
+  },
+  "VEDERE": {
+    "verb": "SEE",
+    "object": "",
+    "qualifier": ""
+  },
+  "AREA_CONTROLLO": {
+    "verb": "CONTROL",
+    "object": "AREA",
+    "qualifier": ""
+  },
+  "CODICE": {
+    "verb": "CODE",
+    "object": "AREA",
+    "qualifier": ""
+  },
+  "DOMANDA_QUESTIONARIO": {
+    "verb": "ASK",
+    "object": "QUESTION",
+    "qualifier": ""
+  },
+  "LIVELLO_DI_CRITICIT": {
+    "verb": "ASSESS",
+    "object": "LEVEL",
+    "qualifier": ""
+  },
+  "SONO_STATE_IDENTIFICATI": {
+    "verb": "IDENTIFIED",
+    "object": "STATE",
+    "qualifier": ""
+  },
+  "SONO_STATE_IMPLEMENTATE": {
+    "verb": "IMPLEMENTED",
+    "object": "STATE",
+    "qualifier": ""
+  },
+  "SONO_STATI_IDENTIFICATI": {
+    "verb": "IDENTIFIED",
+    "object": "STATES",
+    "qualifier": ""
+  },
+  "STATO_PIANIFICATO": {
+    "verb": "PLANNED",
+    "object": "STATE",
+    "qualifier": ""
+  },
+  "VIENE_PIANIFICATA": {
+    "verb": "PLANNED",
+    "object": "STATE",
+    "qualifier": ""
+  },
+  "REQUISITO": {
+    "verb": "REQUIRE",
+    "object": "",
+    "qualifier": ""
+  },
+  "MAPPED_TO": {
+    "verb": "VISIT",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "VISITARE_IL_PAESE": {
+    "verb": "VISIT",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "MEET_IN": {
+    "verb": "MEET",
+    "object": "",
+    "qualifier": "IN"
+  },
+  "SUPPORT_DURING": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "DURING"
+  },
+  "CYBERSECURITY_SUPPLY_CHAIN_RISK_MANAGEMENT": {
+    "verb": "DEFINE",
+    "object": "REQUIREMENTS",
+    "qualifier": "DI_CUI_AL_P"
+  },
+  "GV_SC_01_1": {
+    "verb": "DEFINE",
+    "object": "REQUIREMENTS",
+    "qualifier": "DI_CUI_AL_P"
+  },
+  "ID": {
+    "verb": "DEFINE",
+    "object": "REQUIREMENTS",
+    "qualifier": "DI_CUI_AL_P"
+  },
+  "N_A": {
+    "verb": "DEFINE",
+    "object": "REQUIREMENTS",
+    "qualifier": "DI_CUI_AL_P"
+  },
+  "SONO_DEFINITI_I_REQUISITI_DI_SICUREZZA_DI_CUI_AL_P": {
+    "verb": "DEFINE",
+    "object": "REQUIREMENTS",
+    "qualifier": ""
+  },
+  "NO": {
+    "verb": "AGREE",
+    "object": "AGREEMENT",
+    "qualifier": ""
+  },
+  "SC": {
+    "verb": "SEE",
+    "object": "",
+    "qualifier": ""
+  },
+  "REGULATORY_MAPPING": {
+    "verb": "MAP",
+    "object": "REGULATORY",
+    "qualifier": ""
+  },
+  "IS_COMPARED_TO": {
+    "verb": "COMPARE",
+    "object": "",
+    "qualifier": "TO"
+  },
+  "IS_IDENTIFIED_BY": {
+    "verb": "IDENTIFY",
+    "object": "",
+    "qualifier": "BY"
+  },
+  "REGULATORY_ATTRIBUTE": {
+    "verb": "REGULATE",
+    "object": "ATTRIBUTE",
+    "qualifier": ""
+  },
+  "IMPROVEMENT": {
+    "verb": "IMPROVE",
+    "object": "",
+    "qualifier": ""
+  },
+  "AUTHENTICATES": {
+    "verb": "AUTHENTICATE",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "IR": {
+    "verb": "MEET",
+    "object": "",
+    "qualifier": "PR"
+  },
+  "PR": {
+    "verb": "MEET",
+    "object": "",
+    "qualifier": ""
+  },
+  "RIDUCE_TARIFFS": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "DECLARE": {
+    "verb": "DECLARE",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "AGREE": {
+    "verb": "AGREE",
+    "object": "AGREEMENT",
+    "qualifier": ""
+  },
+  "RESPOND": {
+    "verb": "RESPOND",
+    "object": "REQUEST",
+    "qualifier": ""
+  },
+  "ATTRIBUTE_OF": {
+    "verb": "HAVE",
+    "object": "ATTRIBUTE",
+    "qualifier": ""
+  },
+  "ATTRIBUTE_TYPE": {
+    "verb": "DESCRIBE",
+    "object": "ATTRIBUTE",
+    "qualifier": ""
+  },
+  "MAPPING_ID": {
+    "verb": "IDENTIFY",
+    "object": "ID",
+    "qualifier": ""
+  },
+  "MAPPING_TYPE": {
+    "verb": "DEFINE",
+    "object": "TYPE",
+    "qualifier": ""
+  },
+  "SHORT_NAME": {
+    "verb": "NAME",
+    "object": "ENTITY",
+    "qualifier": ""
+  },
+  "STANDARD": {
+    "verb": "FOLLOW",
+    "object": "STANDARD",
+    "qualifier": ""
+  },
+  "STANDARD_LEVEL": {
+    "verb": "SET",
+    "object": "LEVEL",
+    "qualifier": ""
+  },
+  "COMPLIANCE": {
+    "verb": "FOLLOW",
+    "object": "",
+    "qualifier": ""
+  },
+  "PROCESS_ENCOMPASSES": {
+    "verb": "ENCOMPASS",
+    "object": "PROCESS",
+    "qualifier": ""
+  },
+  "COMPLIANCE_STATUS": {
+    "verb": "HAVE",
+    "object": "STATUS",
+    "qualifier": ""
+  },
+  "IMPORTANTE_ESSENZIALE": {
+    "verb": "IMPORTANT",
+    "object": "",
+    "qualifier": ""
+  },
+  "SI": {
+    "verb": "AFFIRM",
+    "object": "",
+    "qualifier": ""
+  },
+  "SONO_IMPIEGATE_MODALIT_DI_AUTENTICAZIONE_MULTIFATT": {
+    "verb": "EMPLOY",
+    "object": "AUTHENTICATION_METHODS",
+    "qualifier": "MULTIFACT"
+  },
+  "NIS2_BASE": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "PSNC": {
+    "verb": "SIGN",
+    "object": "AGREEMENT",
+    "qualifier": ""
+  },
+  "PR_DS_01_1": {
+    "verb": "SUPPORT",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "PR_DS_01_7": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "MAPPING": {
+    "verb": "MEET",
+    "object": "PERSON",
+    "qualifier": ""
+  },
+  "REQUIREMENT": {
+    "verb": "REQUIRE",
+    "object": "CONDITION",
+    "qualifier": ""
+  },
+  "ESSENZIALE": {
+    "verb": "DESCRIBE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "CM": {
+    "verb": "MEET",
+    "object": "",
+    "qualifier": "NIS2"
+  },
+  "IS_MAPPED_TO": {
+    "verb": "MAP",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "MAPPING_TO": {
+    "verb": "VISIT",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "HAS_QUESTION": {
+    "verb": "ASK",
+    "object": "QUESTION",
+    "qualifier": ""
+  },
+  "CONSENTIRE_LA_RISOLUZIONE_DI_ACCORDI_CONTRATTULI_P": {
+    "verb": "APPROVE",
+    "object": "AGREEMENT",
+    "qualifier": "CONTRATTULI_P"
+  },
+  "CONSIDERATA_L_IPOTESI_DI_UNA_NON_FACILE_SOSTITUZIO": {
+    "verb": "CONSIDER",
+    "object": "HYPOTHESIS",
+    "qualifier": "SOSTITUZIO"
+  },
+  "IMPLEMENTATE_MISURE_DI_EMERGENZA_IDONEE_PER_MANTEN": {
+    "verb": "IMPLEMENT",
+    "object": "MEASURE",
+    "qualifier": "MANTEN"
+  },
+  "PREDISPOSTE_SOLUZIONI_CHE_IN_CASO_DI": {
+    "verb": "PREPARE",
+    "object": "SOLUTION",
+    "qualifier": "CASO_DI"
+  },
+  "PREDISPOSTE_STRATEGIE_DI_USCITA_NEI_CASI_DI": {
+    "verb": "PREPARE",
+    "object": "STRATEGY",
+    "qualifier": "CASI_DI"
+  },
+  "PREVISTO_CHE_IN_CASO_DI": {
+    "verb": "PREPARE",
+    "object": "STATEMENT",
+    "qualifier": "CASO_DI"
+  },
+  "5_1": {
+    "verb": "TREAT",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "TRATTA": {
+    "verb": "TREAT",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "CONTINUIT_OPERATIVA_DEI_SISTEMI_ICT": {
+    "verb": "ENSURE",
+    "object": "OPERATIONS",
+    "qualifier": ""
+  },
+  "COS": {
+    "verb": "SEE",
+    "object": "SYSTEMS",
+    "qualifier": ""
+  },
+  "FNCS": {
+    "verb": "PROVIDE",
+    "object": "SERVICES",
+    "qualifier": ""
+  },
+  "GESTIONE_DELLA_SICUREZZA": {
+    "verb": "MANAGE",
+    "object": "SECURITY",
+    "qualifier": ""
+  },
+  "GR01": {
+    "verb": "APPLY",
+    "object": "STANDARD",
+    "qualifier": ""
+  },
+  "GSI": {
+    "verb": "ADHERE",
+    "object": "STANDARD",
+    "qualifier": ""
+  },
+  "ISO_IEC_27001_A_5_30": {
+    "verb": "MEET",
+    "object": "REQUIREMENT",
+    "qualifier": ""
+  },
+  "PR_DS_4": {
+    "verb": "DEFINE",
+    "object": "POLICY",
+    "qualifier": ""
+  },
+  "PR_IP_4": {
+    "verb": "DEFINE",
+    "object": "POLICY",
+    "qualifier": ""
+  },
+  "PR_IP_9": {
+    "verb": "DEFINE",
+    "object": "POLICY",
+    "qualifier": ""
+  },
+  "PR_PT_5": {
+    "verb": "DEFINE",
+    "object": "POLICY",
+    "qualifier": ""
+  },
+  "SERVIZI": {
+    "verb": "PROVIDE",
+    "object": "SERVICES",
+    "qualifier": ""
+  },
+  "PR_IP_7": {
+    "verb": "VISIT",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "PR_IP_8": {
+    "verb": "MEET",
+    "object": "OFFICIAL",
+    "qualifier": ""
+  },
+  "SECTION": {
+    "verb": "COVER",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "SERVICES": {
+    "verb": "PROVIDE",
+    "object": "SERVICE",
+    "qualifier": ""
+  },
+  "VGC": {
+    "verb": "SIGN",
+    "object": "AGREEMENT",
+    "qualifier": ""
+  },
+  "CERTIFICAZIONI_RELATIVE_ALLA_SICUREZZA_DELLE_INFOR": {
+    "verb": "CERTIFY",
+    "object": "SECURITY",
+    "qualifier": "INFORMATION"
+  },
+  "SCREENING_DEL_PERSONALE": {
+    "verb": "SCREEN",
+    "object": "PERSONNEL",
+    "qualifier": ""
+  },
+  "AREA": {
+    "verb": "LOCATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "A_8_12": {
+    "verb": "SUPPORT",
+    "object": "SYSTEMS",
+    "qualifier": ""
+  },
+  "A_8_15": {
+    "verb": "USE",
+    "object": "RECORD_DNS",
+    "qualifier": ""
+  },
+  "A_8_16": {
+    "verb": "USE",
+    "object": "RECORD_DNS",
+    "qualifier": ""
+  },
+  "A_8_23": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "A_8_7": {
+    "verb": "MEET",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "RIFERIMENTI": {
+    "verb": "REFER",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "SFA": {
+    "verb": "MEET",
+    "object": "CITY",
+    "qualifier": ""
+  },
+  "SIT": {
+    "verb": "SIT",
+    "object": "EMPTY",
+    "qualifier": ""
+  },
+  "RAPORTA_A": {
+    "verb": "REPORT",
+    "object": "RESPONSIBLE",
+    "qualifier": ""
+  },
+  "RESPONSABILE": {
+    "verb": "RESPONSIBLE",
+    "object": "",
+    "qualifier": ""
+  },
+  "CONTRATTI_STIPULATI_CON_LE_TERZE_PARTI": {
+    "verb": "AGREE",
+    "object": "AGREEMENT",
+    "qualifier": "CON_LE_TERZE_PARTI"
+  },
+  "IL_RISCHIO_RELATIVO_ALLA_CYBERSECURITY_SICUREZZA_D": {
+    "verb": "RELATE",
+    "object": "RISKS",
+    "qualifier": "ALLA_CYBERSECURITY_SICUREZZA_D"
+  },
+  "ASSESSMENT": {
+    "verb": "ASSESS",
+    "object": "PRODUCT",
+    "qualifier": ""
+  },
+  "SICUREZZA_IT": {
+    "verb": "ENSURE",
+    "object": "SECURITY",
+    "qualifier": ""
+  },
+  "AREA_CONTROLLO2": {
+    "verb": "CONTROL",
+    "object": "",
+    "qualifier": "2"
+  },
+  "REGOLAZIONE": {
+    "verb": "REGULATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "VISIT": {
+    "verb": "VISIT",
+    "object": "COUNTRY",
+    "qualifier": ""
+  },
+  "APPROACH_TARGET": {
+    "verb": "APPROACH",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "DECLARARE_STATO": {
+    "verb": "DECLARE",
+    "object": "STATEMENT",
+    "qualifier": ""
+  },
+  "AGREE_ON": {
+    "verb": "AGREE",
+    "object": "AGREEMENT",
+    "qualifier": "ON"
+  },
+  "SUPPORT_FOR": {
+    "verb": "SUPPORT",
+    "object": "CAUSES",
+    "qualifier": "FOR"
+  },
+  "SIGN_AGREEMENT": {
+    "verb": "SIGN",
+    "object": "AGREEMENT",
+    "qualifier": ""
+  },
+  "ANNOUNCE_TO": {
+    "verb": "ANNOUNCE",
+    "object": "PUBLIC",
+    "qualifier": "TO"
+  },
+  "DISCUSS_TOPIC": {
+    "verb": "DISCUSS",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "GR02": {
+    "verb": "SUPPORT",
+    "object": "ELECTIONS",
+    "qualifier": ""
+  },
+  "ACRONYM": {
+    "verb": "ASSOCIATE",
+    "object": "TECHNOLOGY",
+    "qualifier": ""
+  },
+  "VENGONO_UTILIZZATI_RECORD_DNS": {
+    "verb": "USE",
+    "object": "RECORD",
+    "qualifier": "DNS"
+  },
+  "GR": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "RESPONSIBLE_FOR": {
+    "verb": "RESPONSIBLE",
+    "object": "",
+    "qualifier": ""
+  },
+  "RW": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "APPARTENENZA": {
+    "verb": "BELONG",
+    "object": "",
+    "qualifier": ""
+  },
+  "A_8_3": {
+    "verb": "ADOPT",
+    "object": "POLICY",
+    "qualifier": "UN"
+  },
+  "VIENE_ADOTTATO_UN": {
+    "verb": "ADOPT",
+    "object": "POLICY",
+    "qualifier": "UN"
   }
 }

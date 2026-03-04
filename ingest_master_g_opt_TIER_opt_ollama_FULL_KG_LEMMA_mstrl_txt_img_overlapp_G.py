@@ -584,6 +584,7 @@ LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "gemma2:9b")
 #VISION_MODEL_NAME = os.getenv("VISION_MODEL_NAME", "llama3.2-vision:11b")
 
 VISION_MODEL_NAME = os.getenv("VISION_MODEL_NAME", "ministral-3:8b")
+#VISION_MODEL_NAME = os.getenv("VISION_MODEL_NAME", "qwen3.5:9b")
 
 
 
