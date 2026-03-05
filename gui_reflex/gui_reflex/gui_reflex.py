@@ -22,6 +22,10 @@ from qdrant_client import QdrantClient, models  # <--- Serve per il filtro Tier 
 from sentence_transformers import SentenceTransformer, CrossEncoder # <--- Per i vettori della GUI
 import uuid # <--- Per generare gli ID dei messaggi
 
+import threading
+_init_lock = threading.Lock()
+
+
 def looks_garbled(text: str) -> bool:
     """
     True if text contains typical garbage chars from PDF text layer extraction.
@@ -130,74 +134,99 @@ AUDIT_LOG_PATH = os.getenv("AUDIT_LOG_PATH", "./rag_audit.jsonl")
 # =========================
 # 🧠 CARICAMENTO RISORSE
 # =========================
-print("⏳ Init Backend...")
 
-#device_embed = "cuda" if torch.cuda.is_available() else "cpu"
-# ...ogica che provi la CPU ma resti flessibile:
 
-device_embed = "cuda" if torch.cuda.is_available() else "cpu"
 
-device_rerank = "cpu"  # IMPORTANT: avoid fighting with Gemma/Vision on the same P5000
+# ============================================================
+# 🧠 CARICAMENTO RISORSE AI & DB (SINGLETON PATTERN)
+# ============================================================
 
+# Inizializzazione variabili globali a None per caricamento Lazy/Controllato
 embedder = None
 reranker = None
 llm_client = None
 qdrant_client_inst = None
 neo4j_driver = None
+pg_pool = None
 
-try:
-    #print(f"🚀 Loading Embedding Model ({EMBEDDING_MODEL_NAME}) on {device_embed.upper()}...")
-    #embedder = SentenceTransformer(EMBEDDING_MODEL_NAME, device=device_embed)    
-    print(f"🚀 Loading Embedding Model ({EMBEDDING_MODEL_NAME}) on {device_embed.upper()}...")
-    embedder = SentenceTransformer(
-        EMBEDDING_MODEL_NAME, 
-        device=device_embed, 
-        local_files_only=True # Fondamentale per la modalità offline
-    )    
-       
+# Device selection (già definiti nel tuo script, ma assicurati siano accessibili)
+device_embed = "cuda" if torch.cuda.is_available() else "cpu"
+device_rerank = "cpu" 
 
-    #print(f"🚀 Loading Reranker ({RERANKER_MODEL_NAME}) on {device_rerank.upper()}...")
-    #reranker = CrossEncoder(RERANKER_MODEL_NAME, device=device_rerank)
-    
-    print(f"🚀 Loading Reranker ({RERANKER_MODEL_NAME}) on {device_rerank.upper()}...")
-    reranker = CrossEncoder(
-        RERANKER_MODEL_NAME, 
-        device=device_rerank,
-        # Se la libreria CrossEncoder lo supporta direttamente (dipende dalla versione), 
-        # altrimenti il percorso locale è sufficiente.
-    )
+def init_resources():
+    """
+    Inizializza i modelli e le connessioni ai database in un unico passaggio.
+    Previene il caricamento duplicato durante la compilazione del frontend Reflex.
+    """
+    global embedder, reranker, llm_client, qdrant_client_inst, neo4j_driver, pg_pool
 
+    # Se l'embedder è già istanziato, saltiamo per non saturare la VRAM
+    if embedder is not None:
+        return
 
-    print(f"🚀 Connecting to LLM via Ollama ({LLM_MODEL_NAME}) at {OLLAMA_URL}...")
-    llm_client = OpenAI(base_url=OLLAMA_URL, api_key=OLLAMA_API_KEY)
+    print("\n" + "═"*60)
+    print("⏳ [BACKEND] Avvio inizializzazione modelli e database...")
+    print("═"*60)
 
-
-
-    qdrant_client_inst = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
-    neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
-    neo4j_driver.verify_connectivity()
-
-    if PG_ENRICH_ENABLED:
-        pg_pool = SimpleConnectionPool(
-            PG_MIN_CONN, PG_MAX_CONN,
-            host=PG_HOST, port=PG_PORT, dbname=PG_DB,
-            user=PG_USER, password=PG_PASS
+    try:
+        # 1. Embedding Model (BGE-M3) - Caricato su CUDA se disponibile
+        print(f"🚀 Loading Embedding Model ({EMBEDDING_MODEL_NAME}) on {device_embed.upper()}...")
+        embedder = SentenceTransformer(
+            EMBEDDING_MODEL_NAME, 
+            device=device_embed, 
+            local_files_only=True
         )
-        # smoke test
-        conn = pg_pool.getconn()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1;")
-        finally:
-            pg_pool.putconn(conn)
 
+        # 2. Reranker Model - Forzato su CPU per non competere con l'LLM
+        print(f"🚀 Loading Reranker ({RERANKER_MODEL_NAME}) on {device_rerank.upper()}...")
+        reranker = CrossEncoder(
+            RERANKER_MODEL_NAME, 
+            device=device_rerank
+        )
 
+        # 3. LLM Connection (Ollama / OpenAI Compatible)
+        print(f"🚀 Connecting to LLM via Ollama ({LLM_MODEL_NAME}) at {OLLAMA_URL}...")
+        llm_client = OpenAI(base_url=OLLAMA_URL, api_key=OLLAMA_API_KEY)
 
+        # 4. Qdrant (Vector DB)
+        print(f"🌌 Connecting to Qdrant at {QDRANT_HOST}:{QDRANT_PORT}...")
+        qdrant_client_inst = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
 
-    print("✅ Risorse caricate e DB connessi.")
-except Exception as e:
-    print(f"❌ Errore critico avvio risorse: {e}")
-    print("⚠️ L'app partirà ma il retrieval potrebbe fallire.")
+        # 5. Neo4j (Graph DB)
+        print(f"🕸️ Connecting to Neo4j Graph at {NEO4J_URI}...")
+        neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
+        neo4j_driver.verify_connectivity()
+
+        # 6. Postgres Pool (TimescaleDB)
+        if PG_ENRICH_ENABLED:
+            print(f"🐘 Initializing Postgres Pool ({PG_HOST})...")
+            pg_pool = SimpleConnectionPool(
+                PG_MIN_CONN, PG_MAX_CONN,
+                host=PG_HOST, port=PG_PORT, dbname=PG_DB,
+                user=PG_USER, password=PG_PASS
+            )
+            # Smoke test per validare la connessione
+            conn = pg_pool.getconn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1;")
+            finally:
+                pg_pool.putconn(conn)
+
+        print("✅ [BACKEND] Risorse caricate con successo.")
+        print("═"*60 + "\n")
+
+    except Exception as e:
+        print(f"❌ [ERRORE] Fallimento inizializzazione: {e}")
+        # Reset variabili per permettere retry se necessario
+        embedder = None
+        # Non blocchiamo l'esecuzione dell'intera app, ma il RAG non funzionerà
+        
+# --- ESECUZIONE SELETTIVA ---
+# REFLEX_RELOAD viene impostato durante l'hot-reload del server di sviluppo.
+# Questo controllo assicura che il caricamento pesante avvenga solo nel processo worker.
+if not os.environ.get("REFLEX_RELOAD"):
+    init_resources()
 
 
 # =========================
@@ -650,10 +679,6 @@ def get_neighbor_chunk_ids(chunk_ids: List[str], limit: int = GRAPH_MAX_NEIGHBOR
     except Exception as e:
         print(f"⚠️ Neo4j Semantic Neighbors Error: {e}")
     return out
-
-
-
-
 
 
 def fetch_chunks_from_qdrant_by_ids(ids: List[str]) -> List[SourceItem]:
@@ -1422,6 +1447,19 @@ class State(rx.State):
     modal_sources: List[SourceItem] = []
     modal_debug_md: str = ""
     modal_title: str = ""
+    '''
+    def on_load(self):
+        """Eseguito all'apertura della pagina."""
+        # 1. Acquisiamo il lucchetto
+        with _init_lock:
+            # 2. Controlliamo se i modelli sono già stati caricati da qualcun altro
+            if embedder is None:
+                init_resources()
+                
+        # 3. Aggiorniamo la UI
+        self.refresh_gpu()
+        self.refresh_backend_status()
+    '''
 
     def get_context_by_tier(self, query: str, tier: str) -> str:
         try:
