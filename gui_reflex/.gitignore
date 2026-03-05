@@ -4,3 +4,12 @@ __pycache__/
 .web
 .states
 *.db
+*.json
+*.log
+*.sqlite
+*.sqlite3
+*.bak
+*.tmp
+*.swp
+*.swo
+*.DS_Store
