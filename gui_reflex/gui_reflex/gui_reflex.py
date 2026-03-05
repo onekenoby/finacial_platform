@@ -627,17 +627,16 @@ def get_formulas_for_chunks(chunk_ids: List[str], limit: int = GRAPH_MAX_FORMULA
 def get_neighbor_chunk_ids(chunk_ids: List[str], limit: int = GRAPH_MAX_NEIGHBOR_CHUNKS) -> List[str]:
     if not chunk_ids or not neo4j_driver:
         return []
-    # Nuova query: trova chunk che condividono le STESSE entità dei chunk trovati da Qdrant
-    # FIX ANTI-RUMORE: Richiede correlazione forte (minimo 2 entità in comune)
-    # o esclude entità troppo generiche (Type='Entity' generico)
+    
+    # Rimosso il commento inline '--' che causava il SyntaxError
     query = """
     MATCH (c1:Chunk)<-[:MENTIONED_IN]-(e:Entity)-[:MENTIONED_IN]->(c2:Chunk)
     WHERE c1.id IN $ids 
       AND NOT c2.id IN $ids
-      AND NOT e.type IN ['Generic', 'Year', 'Date'] -- Filtro Stop-Nodes opzionale
+      AND NOT e.type IN ['Generic', 'Year', 'Date']
     
-    WITH c2, count(DISTINCT e) as strength, collect(e.label) as overlaps
-    WHERE strength >= 2  -- <--- FILTRO CRITICO: Almeno 2 concetti in comune
+    WITH c2, count(DISTINCT e) as strength
+    WHERE strength >= 2
     
     RETURN c2.id AS cid
     ORDER BY strength DESC
@@ -651,6 +650,10 @@ def get_neighbor_chunk_ids(chunk_ids: List[str], limit: int = GRAPH_MAX_NEIGHBOR
     except Exception as e:
         print(f"⚠️ Neo4j Semantic Neighbors Error: {e}")
     return out
+
+
+
+
 
 
 def fetch_chunks_from_qdrant_by_ids(ids: List[str]) -> List[SourceItem]:

@@ -33958,5 +33958,55 @@
     "verb": "ADOPT",
     "object": "POLICY",
     "qualifier": "UN"
+  },
+  "LISTA_DI_PESI": {
+    "verb": "WEIGHT",
+    "object": "LIST",
+    "qualifier": ""
+  },
+  "LISTA_DI_PUNTEGGI": {
+    "verb": "SCORE",
+    "object": "LIST",
+    "qualifier": ""
+  },
+  "NUMERO_DI_PUNTI_DI_CONTROLLO": {
+    "verb": "CONTROL",
+    "object": "NUMBER",
+    "qualifier": ""
+  },
+  "PESO_CRITICIT_ASSOCIATA_AL_PUNTO": {
+    "verb": "ASSOCIATE",
+    "object": "WEIGHT",
+    "qualifier": ""
+  },
+  "PUNTEGGIO_MASSIMO_TEORICO_PER_PUNTO": {
+    "verb": "SCORE",
+    "object": "MAXIMUM",
+    "qualifier": ""
+  },
+  "ACCEPTS_PARAMETER": {
+    "verb": "ACCEPT",
+    "object": "PARAMETER",
+    "qualifier": ""
+  },
+  "HAS_ATTRIBUTE": {
+    "verb": "HAVE",
+    "object": "ATTRIBUTE",
+    "qualifier": ""
+  },
+  "HAS_METHOD": {
+    "verb": "HAVE",
+    "object": "METHOD",
+    "qualifier": ""
+  },
+  "PARAMETRO": {
+    "verb": "SUPPORT",
+    "object": "",
+    "qualifier": "TIPO_DI_CONTROLLO"
+  },
+  "TIPO_DI_CONTROLLO": {
+    "verb": "TYPE",
+    "object": "PARAMETER",
+    "qualifier": ""
   }
 }
