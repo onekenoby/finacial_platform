@@ -2162,6 +2162,7 @@ MERGE (c:Chunk {id: r.chunk_id})
 SET c.chunk_index = r.chunk_index,
     c.toon_type = r.toon_type,
     c.page = r.page_no,
+    c.filename = r.filename,
     c.text = left(r.text_sem, 1000), 
     c.section_hint = coalesce(r.section_hint, ""),
     c.ontology = r.ontology

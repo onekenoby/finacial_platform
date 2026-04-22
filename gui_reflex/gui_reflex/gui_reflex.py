@@ -80,6 +80,7 @@ NEO4J_AUTH = ("neo4j", os.getenv("NEO4J_PASSWORD", "password_sicura"))
 
 # AI Models
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "gemma3:12b")
+#LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "gemma4:latest")
 #LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "qwen3-vl:8b")
 
 VISION_MODEL_NAME = os.getenv("VISION_MODEL_NAME", LLM_MODEL_NAME)

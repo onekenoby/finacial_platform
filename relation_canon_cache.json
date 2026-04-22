@@ -34008,5 +34008,525 @@
     "verb": "TYPE",
     "object": "PARAMETER",
     "qualifier": ""
+  },
+  "COSTRUISCE": {
+    "verb": "BUILD",
+    "object": "",
+    "qualifier": ""
+  },
+  "IS_COMPARED_ON": {
+    "verb": "COMPARE",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "CONTENUTI": {
+    "verb": "DISCUSS",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "DATI": {
+    "verb": "USE",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "DOCUMENTI": {
+    "verb": "PRODUCE",
+    "object": "DOCUMENT",
+    "qualifier": ""
+  },
+  "ESPLICITARE": {
+    "verb": "EXPLAIN",
+    "object": "CONCEPT",
+    "qualifier": ""
+  },
+  "GUIDARE": {
+    "verb": "LEAD",
+    "object": "GROUP",
+    "qualifier": ""
+  },
+  "REGOLE": {
+    "verb": "DEFINE",
+    "object": "RULE",
+    "qualifier": ""
+  },
+  "USARE": {
+    "verb": "USE",
+    "object": "TOOL",
+    "qualifier": ""
+  },
+  "DI": {
+    "verb": "TALK",
+    "object": "",
+    "qualifier": ""
+  },
+  "AIMS_TO_PROTECT": {
+    "verb": "PROTECT",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "AIMS_TO_REDUCE": {
+    "verb": "REDUCE",
+    "object": "TARIFFS",
+    "qualifier": ""
+  },
+  "DEFINES_RULES_FOR": {
+    "verb": "DEFINE",
+    "object": "RULES",
+    "qualifier": ""
+  },
+  "DISTINGUISHES": {
+    "verb": "DISTINGUISH",
+    "object": "TARGET",
+    "qualifier": ""
+  },
+  "IS_A_BASE_FOR": {
+    "verb": "BE",
+    "object": "BASE",
+    "qualifier": ""
+  },
+  "NEEDS_VALIDATION_WITH": {
+    "verb": "NEED",
+    "object": "VALIDATION",
+    "qualifier": "WITH"
+  },
+  "APPLICATA_A": {
+    "verb": "APPLY",
+    "object": "",
+    "qualifier": "A"
+  },
+  "CONTIENE_INFORMAZIONI": {
+    "verb": "CONTAIN",
+    "object": "INFORMATION",
+    "qualifier": ""
+  },
+  "EVITARE_LOGGARE": {
+    "verb": "AVOID",
+    "object": "LOG",
+    "qualifier": "IN"
+  },
+  "LOGGARE": {
+    "verb": "LOG",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "IS_LOADED_INTO": {
+    "verb": "LOAD",
+    "object": "SYSTEM",
+    "qualifier": ""
+  },
+  "IS_RETRIEVABLE_BY": {
+    "verb": "RETRIEVE",
+    "object": "USER",
+    "qualifier": ""
+  },
+  "IS_SHOWN_IN": {
+    "verb": "DISPLAY",
+    "object": "INTERFACE",
+    "qualifier": ""
+  },
+  "HAS_COLUMN": {
+    "verb": "HAS",
+    "object": "COLUMN",
+    "qualifier": ""
+  },
+  "BENCHMARK_COMPARED_TO": {
+    "verb": "COMPARE",
+    "object": "BENCHMARK",
+    "qualifier": "TO"
+  },
+  "ONTOLOGY_CONSIGLIATA": {
+    "verb": "RECOMMEND",
+    "object": "ONTOLOGY",
+    "qualifier": ""
+  },
+  "ALTERNATIVA_FUNZIONALE": {
+    "verb": "REPLACE",
+    "object": "BENCHMARK",
+    "qualifier": ""
+  },
+  "BENCHMARK": {
+    "verb": "BENCHMARK",
+    "object": "",
+    "qualifier": ""
+  },
+  "ENRICHES": {
+    "verb": "ENRICH",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "NOT_CAPTURED": {
+    "verb": "CAPTURE",
+    "object": "EMPTY",
+    "qualifier": ""
+  },
+  "NOT_NECESSARILY_REPLICATES": {
+    "verb": "REPLICATE",
+    "object": "EMPTY",
+    "qualifier": "NECESSARILY"
+  },
+  "NOT_REPLICATED_BY": {
+    "verb": "REPLICATE",
+    "object": "EMPTY",
+    "qualifier": "BY"
+  },
+  "APPARE_ASSIMILABILE_PER_FUNZIONE_DI_PORTFOGLIO": {
+    "verb": "APPEAR",
+    "object": "FUNCTION",
+    "qualifier": "PORTFOLIO"
+  },
+  "RAPPRESENTA_UNA_ALTERNATIVA_PLAUSIBILE_IN_OTTICA_D": {
+    "verb": "REPRESENT",
+    "object": "ALTERNATIVE",
+    "qualifier": "OPTICS"
+  },
+  "VERIFICARE_SU": {
+    "verb": "VERIFY",
+    "object": "TOPIC",
+    "qualifier": "ON"
+  },
+  "ADHERES_TO": {
+    "verb": "ADHERE",
+    "object": "",
+    "qualifier": ""
+  },
+  "SOCIET_DI_GESTIONE": {
+    "verb": "MANAGE",
+    "object": "",
+    "qualifier": ""
+  },
+  "ISSUER": {
+    "verb": "ISSUE",
+    "object": "",
+    "qualifier": ""
+  },
+  "REGULATED_BY": {
+    "verb": "REGULATE",
+    "object": "LAW",
+    "qualifier": ""
+  },
+  "BUY_AND_SELL": {
+    "verb": "BUY",
+    "object": "SELL",
+    "qualifier": ""
+  },
+  "CONTACT_FOR": {
+    "verb": "CONTACT",
+    "object": "",
+    "qualifier": "FOR"
+  },
+  "FACILITATES_TRADING": {
+    "verb": "FACILITATE",
+    "object": "TRADING",
+    "qualifier": ""
+  },
+  "INFORMATION_ABOUT": {
+    "verb": "PROVIDE",
+    "object": "INFORMATION",
+    "qualifier": "ABOUT"
+  },
+  "PROVIDES_ADVICE_ON": {
+    "verb": "PROVIDE",
+    "object": "ADVICE",
+    "qualifier": "ON"
+  },
+  "RISK_TO": {
+    "verb": "RISK",
+    "object": "TARGET",
+    "qualifier": "TO"
+  },
+  "ALLOCATION": {
+    "verb": "ALLOCATE",
+    "object": "SECTOR",
+    "qualifier": ""
+  },
+  "SECTOR_ALLOCATION": {
+    "verb": "ALLOCATE",
+    "object": "SECTOR",
+    "qualifier": ""
+  },
+  "LISTING_CURRENCY": {
+    "verb": "SPECIFY",
+    "object": "CURRENCY",
+    "qualifier": ""
+  },
+  "SEDOL_CODE": {
+    "verb": "IDENTIFY",
+    "object": "SECURITY",
+    "qualifier": ""
+  },
+  "CURRENCY": {
+    "verb": "HAVE",
+    "object": "CURRENCY",
+    "qualifier": ""
+  },
+  "PHONE_NUMBER": {
+    "verb": "HAVE",
+    "object": "PHONE_NUMBER",
+    "qualifier": ""
+  },
+  "SEDOL": {
+    "verb": "HAVE",
+    "object": "SEDOL",
+    "qualifier": ""
+  },
+  "TICKER": {
+    "verb": "HAVE",
+    "object": "TICKER",
+    "qualifier": ""
+  },
+  "TRADE_REGISTER_NO": {
+    "verb": "HAVE",
+    "object": "TRADE_REGISTER_NO",
+    "qualifier": ""
+  },
+  "OTHER_DATA_AS_OF": {
+    "verb": "TRACK",
+    "object": "DATA",
+    "qualifier": "AS_OF"
+  },
+  "PERFORMANCE_DATA_AS_OF": {
+    "verb": "TRACK",
+    "object": "DATA",
+    "qualifier": "AS_OF"
+  },
+  "RISK_LEVEL": {
+    "verb": "DETERMINE",
+    "object": "RISK",
+    "qualifier": ""
+  },
+  "TARGET_INVESTOR": {
+    "verb": "TARGET",
+    "object": "INVESTOR",
+    "qualifier": ""
+  },
+  "TARGET_MARKET": {
+    "verb": "TARGET",
+    "object": "MARKET",
+    "qualifier": ""
+  },
+  "TRACKS_INDEX": {
+    "verb": "TRACK",
+    "object": "INDEX",
+    "qualifier": ""
+  },
+  "METRIC": {
+    "verb": "MEASURE",
+    "object": "PERFORMANCE",
+    "qualifier": "METRIC"
+  },
+  "PERFORMANCE_METRIC": {
+    "verb": "BE",
+    "object": "METRIC",
+    "qualifier": "METRIC"
+  },
+  "GEOGRAPHIC_EXPOSURE": {
+    "verb": "EXPOSE",
+    "object": "",
+    "qualifier": ""
+  },
+  "ASSET_MANAGER": {
+    "verb": "MANAGE",
+    "object": "FUND",
+    "qualifier": ""
+  },
+  "FUND_PROVIDER": {
+    "verb": "PROVIDE",
+    "object": "FUND",
+    "qualifier": ""
+  },
+  "GEOGRAPHIC_DISTRIBUTION": {
+    "verb": "DISTRIBUTE",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "INDEX_PROVIDER": {
+    "verb": "PROVIDE",
+    "object": "INDEX",
+    "qualifier": ""
+  },
+  "SFDR_CLASSIFICATION": {
+    "verb": "CLASSIFY",
+    "object": "FUND",
+    "qualifier": ""
+  },
+  "TARGET_AUDIENCE": {
+    "verb": "TARGET",
+    "object": "INVESTOR",
+    "qualifier": ""
+  },
+  "VALUATION_RATIO": {
+    "verb": "CALCULATE",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "ASSORBIMENTO": {
+    "verb": "ACQUIRE",
+    "object": "FUNDS",
+    "qualifier": ""
+  },
+  "CODICE_ISIN": {
+    "verb": "IDENTIFY",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "DATA_DI_ASSORBIMENTO": {
+    "verb": "ACQUIRE",
+    "object": "FUNDS",
+    "qualifier": ""
+  },
+  "DATA_DI_VALORIZZAZIONE": {
+    "verb": "VALUE",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "NAV": {
+    "verb": "CALCULATE",
+    "object": "NAV",
+    "qualifier": ""
+  },
+  "PATRIMONIO_IN_GESTIONE": {
+    "verb": "MANAGE",
+    "object": "PORTFOLIO",
+    "qualifier": ""
+  },
+  "PERIODO_DI_INVESTIMENTO": {
+    "verb": "INVEST",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "TIPO_DI_REPLICA": {
+    "verb": "IDENTIFY",
+    "object": "REPLICATION",
+    "qualifier": ""
+  },
+  "INVESTMENTCLASS": {
+    "verb": "CLASSIFY",
+    "object": "CATEGORY",
+    "qualifier": ""
+  },
+  "INVESTMENTSTYLE": {
+    "verb": "DEFINE",
+    "object": "STYLE",
+    "qualifier": ""
+  },
+  "NUMBEROFASSETS": {
+    "verb": "COUNT",
+    "object": "ASSET",
+    "qualifier": ""
+  },
+  "EMITTENTE": {
+    "verb": "ISSUE",
+    "object": "",
+    "qualifier": ""
+  },
+  "INDICE_DI_RIFERIMENTO": {
+    "verb": "REFLECT",
+    "object": "INDEX",
+    "qualifier": ""
+  },
+  "NAV_ALLA_DATA_DI_ISTITUZIONE": {
+    "verb": "SET",
+    "object": "NAV",
+    "qualifier": ""
+  },
+  "PRIMA_DATA_DI_NAV": {
+    "verb": "SET",
+    "object": "DATE",
+    "qualifier": ""
+  },
+  "RISCHIO_PI_ALTO": {
+    "verb": "INDICATE",
+    "object": "RISK",
+    "qualifier": "HIGH"
+  },
+  "RISCHIO_PI_BASSO": {
+    "verb": "INDICATE",
+    "object": "RISK",
+    "qualifier": "LOW"
+  },
+  "VALORE_QUOTA_NAV": {
+    "verb": "SET",
+    "object": "VALUE",
+    "qualifier": ""
+  },
+  "REGION": {
+    "verb": "DESCRIBE",
+    "object": "",
+    "qualifier": ""
+  },
+  "AUDITED_BY": {
+    "verb": "AUDIT",
+    "object": "COMPANY",
+    "qualifier": "BY"
+  },
+  "CUSTODIAN": {
+    "verb": "BE",
+    "object": "CUSTODIAN",
+    "qualifier": ""
+  },
+  "APPROVED_BY": {
+    "verb": "APPROVE",
+    "object": "PERSON",
+    "qualifier": ""
+  },
+  "BASED_ON_INDEX": {
+    "verb": "BASE",
+    "object": "INDEX",
+    "qualifier": ""
+  },
+  "REGISTERED_AT": {
+    "verb": "REGISTER",
+    "object": "LOCATION",
+    "qualifier": ""
+  },
+  "REGISTERED_WITH": {
+    "verb": "REGISTER",
+    "object": "ORGANIZATION",
+    "qualifier": ""
+  },
+  "WHERE": {
+    "verb": "LOCATE",
+    "object": "",
+    "qualifier": ""
+  },
+  "HAS_INSTRUMENT": {
+    "verb": "USE",
+    "object": "INSTRUMENT",
+    "qualifier": ""
+  },
+  "GROUP_BY": {
+    "verb": "GROUP",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "ROUND": {
+    "verb": "ROUND",
+    "object": "NUMBER",
+    "qualifier": ""
+  },
+  "SELECTS_FROM": {
+    "verb": "SELECT",
+    "object": "FROM",
+    "qualifier": ""
+  },
+  "SELECT_FROM": {
+    "verb": "SELECT",
+    "object": "DATA",
+    "qualifier": ""
+  },
+  "SELECTS": {
+    "verb": "SELECT",
+    "object": "TOPIC",
+    "qualifier": ""
+  },
+  "JOINED_BY": {
+    "verb": "JOIN",
+    "object": "PARTY",
+    "qualifier": ""
+  },
+  "LEFT_JOINED_BY": {
+    "verb": "JOIN",
+    "object": "PARTY",
+    "qualifier": ""
   }
 }
