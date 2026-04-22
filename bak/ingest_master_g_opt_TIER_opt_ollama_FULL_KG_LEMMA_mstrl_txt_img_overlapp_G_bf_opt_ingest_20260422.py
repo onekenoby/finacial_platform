@@ -3668,17 +3668,19 @@ MATH_BROAD_PAT = re.compile(
 
 def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
     """
-    Estrazione Universale (PDF) v3.0:
-    1. SINGOLO PASSAGGIO CON FITZ. Nessun doppio caricamento.
-    2. Testo Nativo con OVERLAP (Rolling Buffer).
-    3. Immagini Embedded (grafici raster).
-    4. Matematica/Schemi (Visione su render Hi-Res).
+    Estrazione Universale (PDF) v2.5:
+    1. Testo Nativo con OVERLAP (Rolling Buffer).
+    2. Immagini Embedded (grafici raster).
+    3. Matematica/Schemi (Visione su render Hi-Res).
     """
     
     # --- CONFIGURAZIONE OVERLAP ---
     OVERLAP_SIZE = 250  # Caratteri (~40 parole)
     prev_page_tail = "" # Buffer per la coda della pagina precedente
     # ------------------------------
+
+    # 1. Estrazione del testo nativo
+    native_text_pages = extract_pdf_text_by_page_pdfminer(file_path)
 
     filename = os.path.basename(file_path)
     final_chunks: List[Dict[str, Any]] = []
@@ -3700,14 +3702,10 @@ def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
         # Calcolo ID univoco documento (hash)
         doc_id = sha256_file(file_path)[:32]
 
-        # ==============================================================
-        # CICLO UNICO: SCORRIAMO LE PAGINE UNA SOLA VOLTA
-        # ==============================================================
-        for i, page in enumerate(doc):
+        for i, page_text in enumerate(native_text_pages):
             page_no = i + 1
             
-            # 1. ESTRAZIONE TESTO NATIVO CON FITZ
-            page_text = page.get_text("text", sort=True)
+            # Pulizia base per evitare spazi bianchi eccessivi
             clean_text = page_text.strip()
             
             # =========================================================
@@ -3721,9 +3719,15 @@ def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
             # Se serve la Visione, sostituiamo 'clean_text' con l'output dell'LLM
             if use_vision_replacement:
                 try:
-                    # Carichiamo la pagina come immagine ad alta risoluzione (DPI 180)
-                    hq_bytes = render_full_page_png(page, dpi=180) 
+                    # Carichiamo la pagina come immagine ad alta risoluzione (DPI 250 cruciale per pedici)
+                    page_obj = doc[i]
+                    hq_bytes = render_full_page_png(page_obj, dpi=180) 
                     
+                    # Svuotiamo la VRAM prima del task pesante
+                    #if VISION_MODEL_NAME: force_unload_ollama(VISION_MODEL_NAME)
+
+                    # ✅ NON fare unload qui: costa moltissimo e spesso peggiora la latenza.
+                    # Manteniamo il modello caldo durante l'intero documento.
                     vision_md = llm_chat_multimodal(
                         prompt=MARKER_VISION_PROMPT,
                         image_bytes=hq_bytes,
@@ -3731,11 +3735,15 @@ def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
                         max_tokens=3500
                     )
 
+                    
                     if len(vision_md) > 50:
-                        clean_text = f"\n{vision_md}" 
+                        clean_text = vision_md 
+                        # Aggiungiamo un marker invisibile per debug futuro
+                        clean_text = f"\n{clean_text}"
                     
                 except Exception as e:
                     print(f"   ⚠️ Vision fallback failed: {e}")
+                    # Se fallisce, teniamo il clean_text originale
             # =========================================================
 
             # ---------------------------------------------------------
@@ -3744,123 +3752,131 @@ def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
             if len(clean_text) > MIN_CHUNK_LEN:
                 
                 # --- LOGICA OVERLAP ---
-                header_semantico = f"Doc: {filename} | Pagina: {page_no}\n"
                 
+                # --- LOGICA OVERLAP ---
+                # Costruiamo il testo semantico (quello che verrà vettorizzato)
+                # incollando la fine della pagina precedente all'inizio di questa.
                 if prev_page_tail:
-                    text_semantic_content = f"{header_semantico}... {prev_page_tail}\n{clean_text}"
+                    text_semantic_content = f"... {prev_page_tail}\n{clean_text}"
                 else:
-                    text_semantic_content = f"{header_semantico}{clean_text}"
+                    text_semantic_content = clean_text
                 
                 # Aggiorniamo il buffer per il prossimo giro
                 if len(clean_text) > OVERLAP_SIZE:
                     prev_page_tail = clean_text[-OVERLAP_SIZE:]
                 else:
-                    prev_page_tail = clean_text 
+                    prev_page_tail = clean_text # Pagina corta, prendiamo tutto
                 # ----------------------
 
                 final_chunks.append({
-                    "text_raw": clean_text,
-                    "text_sem": text_semantic_content, 
+                    "text_raw": clean_text,          # Il testo originale resta pulito
+                    "text_sem": text_semantic_content, # Il testo per il RAG ha l'overlap
                     "toon_type": "testo",
                     "page_no": page_no,
                     "metadata": {"source": filename, "doc_id": doc_id}
                 })
             else:
+                # Se la pagina è vuota/sporca, resettiamo il buffer per non incollare
+                # roba vecchia su una pagina che magari è un nuovo capitolo dopo pagina bianca
                 prev_page_tail = ""
 
-            # ---------------------------------------------------------
-            # B) IMMAGINI EMBEDDED (Grafici Raster, Foto)
-            # ---------------------------------------------------------
-            if PDF_VISION_ENABLED:
-                page_objs = page.get_images(full=True) or []
-                
-                t_conn = pg_get_conn()
-                try:
-                    with t_conn.cursor() as t_cur:
-                        for img_idx, img in enumerate(page_objs):
-                            xref = img[0]
-                            try:
-                                base_image = doc.extract_image(xref)
-                                img_bytes = base_image.get("image", b"")
-                                
-                                if not img_bytes or len(img_bytes) < MIN_ASSET_SIZE:
+            # Se PyMuPDF riesce ad aprire la pagina corrispondente
+            if i < len(doc):
+                page = doc[i]
+
+                # ---------------------------------------------------------
+                # B) IMMAGINI EMBEDDED (Grafici Raster, Foto)
+                # ---------------------------------------------------------
+                if PDF_VISION_ENABLED:
+                    page_objs = page.get_images(full=True) or []
+                    
+                    t_conn = pg_get_conn()
+                    try:
+                        with t_conn.cursor() as t_cur:
+                            for img_idx, img in enumerate(page_objs):
+                                xref = img[0]
+                                try:
+                                    base_image = doc.extract_image(xref)
+                                    img_bytes = base_image.get("image", b"")
+                                    
+                                    if not img_bytes or len(img_bytes) < MIN_ASSET_SIZE:
+                                        continue
+
+                                    img_name = f"PDF_{doc_id}_P{page_no}_IMG{img_idx}"
+                                    image_id = pg_save_image(log_id, img_bytes, "image/jpeg", img_name, cur=t_cur)
+
+                                    analysis = None
+                                    if VISION_MODEL_NAME:
+                                        try:
+                                            analysis = extract_chart_via_vision(
+                                                img_bytes,
+                                                context_hint=f"Page {page_no} of {filename}"
+                                            )
+                                        except Exception: 
+                                            analysis = None
+                                    
+                                    if analysis:
+                                        sem_text = build_chart_semantic_chunk(page_no, analysis)
+                                        meta = analysis
+                                    else:
+                                        sem_text = normalize_ws(f"--- ASSET VISIVO - P{page_no} ---\nNome: {img_name}")
+                                        meta = {"asset_name": img_name}
+
+                                    final_chunks.append({
+                                        "text_raw": json.dumps(meta) if analysis else sem_text,
+                                        "text_sem": sem_text,
+                                        "toon_type": "imagine",
+                                        "page_no": page_no,
+                                        "image_id": image_id,
+                                        "metadata": {**meta, "source": filename}
+                                    })
+
+                                except Exception:
                                     continue
+                        t_conn.commit()
+                    finally:
+                        pg_put_conn(t_conn)
 
-                                img_name = f"PDF_{doc_id}_P{page_no}_IMG{img_idx}"
-                                image_id = pg_save_image(log_id, img_bytes, "image/jpeg", img_name, cur=t_cur)
+                # ---------------------------------------------------------
+                # C) MATEMATICA & VETTORIALI (Render & Transcribe)
+                # ---------------------------------------------------------
+                has_math_text = bool(MATH_BROAD_PAT.search(page_text))
+                vector_count = _count_vectors(page)
+                has_vectors = vector_count > 10 
 
-                                analysis = None
-                                if VISION_MODEL_NAME:
-                                    try:
-                                        analysis = extract_chart_via_vision(
-                                            img_bytes,
-                                            context_hint=f"Page {page_no} of {filename}"
-                                        )
-                                    except Exception: 
-                                        analysis = None
-                                
-                                if analysis:
-                                    sem_text = build_chart_semantic_chunk(page_no, analysis)
-                                    meta = analysis
-                                else:
-                                    sem_text = normalize_ws(f"--- ASSET VISIVO - P{page_no} ---\nNome: {img_name}")
-                                    meta = {"asset_name": img_name}
+                if PDF_VISION_ENABLED and (has_math_text or has_vectors):
+                    try:
+                        pix = page.get_pixmap(dpi=300, alpha=False)
+                        hq_bytes = pix.tobytes("png")
 
-                                final_chunks.append({
-                                    "text_raw": json.dumps(meta) if analysis else sem_text,
-                                    "text_sem": sem_text,
-                                    "toon_type": "imagine",
-                                    "page_no": page_no,
-                                    "image_id": image_id,
-                                    "metadata": {**meta, "source": filename}
-                                })
+                        math_json = extract_formulas_vision(hq_bytes)
 
-                            except Exception:
-                                continue
-                    t_conn.commit()
-                finally:
-                    pg_put_conn(t_conn)
+                        if math_json and math_json.get("formulas"):
+                            sem_math = build_formula_semantic_chunk(page_no, math_json)
+                            
+                            final_chunks.append({
+                                "text_raw": json.dumps(math_json, ensure_ascii=False),
+                                "text_sem": sem_math,
+                                "toon_type": "formula",
+                                "page_no": page_no,
+                                "metadata": {
+                                    "source": filename,
+                                    "type": "mathematical_content",
+                                    "doc_id": doc_id,
+                                    "formulas_found": len(math_json.get("formulas", []))
+                                }
+                            })
+                            print(f"   Σ  Matematica rilevata a pag {page_no}: {len(math_json['formulas'])} formule.")
 
-            # ---------------------------------------------------------
-            # C) MATEMATICA & VETTORIALI (Render & Transcribe)
-            # ---------------------------------------------------------
-            has_math_text = bool(MATH_BROAD_PAT.search(page_text))
-            vector_count = _count_vectors(page)
-            has_vectors = vector_count > 10 
-
-            if PDF_VISION_ENABLED and (has_math_text or has_vectors):
-                try:
-                    pix = page.get_pixmap(dpi=300, alpha=False)
-                    hq_bytes = pix.tobytes("png")
-
-                    math_json = extract_formulas_vision(hq_bytes)
-
-                    if math_json and math_json.get("formulas"):
-                        sem_math = build_formula_semantic_chunk(page_no, math_json)
-                        
-                        final_chunks.append({
-                            "text_raw": json.dumps(math_json, ensure_ascii=False),
-                            "text_sem": sem_math,
-                            "toon_type": "formula",
-                            "page_no": page_no,
-                            "metadata": {
-                                "source": filename,
-                                "type": "mathematical_content",
-                                "doc_id": doc_id,
-                                "formulas_found": len(math_json.get("formulas", []))
-                            }
-                        })
-                        print(f"   Σ  Matematica rilevata a pag {page_no}: {len(math_json['formulas'])} formule.")
-
-                except Exception as e_math:
-                    print(f"   ⚠️ Errore estrazione matematica pag {page_no}: {e_math}")
+                    except Exception as e_math:
+                        print(f"   ⚠️ Errore estrazione matematica pag {page_no}: {e_math}")
 
     except Exception as e:
         print(f"   ❌ Errore critico file {filename}: {e}")
     finally:
         if doc: doc.close()
 
-        # ✅ Unload una sola volta a fine documento
+        # ✅ Unload una sola volta a fine documento (opzionale)
         if PDF_VISION_ENABLED and VISION_MODEL_NAME:
             force_unload_ollama(VISION_MODEL_NAME)
 
@@ -4026,20 +4042,15 @@ def extract_pdf_as_markdown_assets(file_path: str, log_id: int) -> List[Dict[str
 
 def normalize_toon_type(ch: dict) -> str:
     """
-    Rileva se un chunk è 'immagine' o 'formula' basandosi sui marcatori,
-    correggendo eventuali typo e categorizzando il Markdown visivo.
+    Rileva se un chunk è 'immagine' basandosi sui marcatori del prompt di visione
+    o sulla presenza di un asset ID salvato.
     """
-    current_type = str(ch.get("toon_type", "")).lower()
-    
-    # 1. Protezione assoluta: se è già stato taggato come formula, non toccarlo
-    if current_type == "formula":
-        return "formula"
-
-    # 2. Controllo se esiste un riferimento a un'immagine salvata nel DB (Postgres)
+    # 1. Controllo se esiste un riferimento a un'immagine salvata nel DB
     if ch.get("image_id") is not None:
-        return "immagine"
+        return "imagine"
     
-    # 3. Scansione dei marcatori testuali generati dalla Vision AI
+    # 2. Scansione dei marcatori testuali generati dalla Vision AI
+    # Cerca i tag impostati in VISION_FIRST_PROMPT
     content_raw = ch.get("text_raw", "")
     content_sem = ch.get("text_sem", "")
     
@@ -4047,20 +4058,16 @@ def normalize_toon_type(ch: dict) -> str:
         "### 🖼️ VISUAL ANALYSIS", 
         "VISUAL ANALYSIS:", 
         "*Visual Elements:*", 
-        "--- CONTENUTO VISUALE",
-        "--- ANALISI VISUALE",
-        "!["  # <--- FIX: Riconosce i tag immagine nativi del Markdown
+        "--- CONTENUTO VISUALE"
     ]
     
-    # Se il testo contiene uno dei marcatori visivi, forzalo come immagine
     if any(m in content_raw for m in markers) or any(m in content_sem for m in markers):
-        return "immagine"
+        return "imagine"
     
-    # 4. Fallback sul tipo assegnato durante l'estrazione (correggendo il typo)
-    if current_type in ["immagine", "imagine", "image"]:
-        return "immagine"
+    # 3. Fallback sul tipo assegnato durante l'estrazione
+    if ch.get("toon_type") == "immagine":
+        return "imagine"
 
-    # Se non è niente di tutto ciò, è testo
     return "testo"
 
 
