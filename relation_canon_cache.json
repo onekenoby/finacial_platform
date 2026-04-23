@@ -34528,5 +34528,55 @@
     "verb": "JOIN",
     "object": "PARTY",
     "qualifier": ""
+  },
+  "DIMENSION_OF": {
+    "verb": "DESCRIBE",
+    "object": "PROPERTY",
+    "qualifier": ""
+  },
+  "VISITA_PAESI": {
+    "verb": "VISIT",
+    "object": "COUNTRIES",
+    "qualifier": ""
+  },
+  "REQUIRED_FOR": {
+    "verb": "REQUIRE",
+    "object": "",
+    "qualifier": ""
+  },
+  "TRANSFORMED_TO": {
+    "verb": "MEET",
+    "object": "PERSON",
+    "qualifier": ""
+  },
+  "GENERAZIONE_SEGNALI_PER": {
+    "verb": "GENERATE",
+    "object": "SIGNALS",
+    "qualifier": ""
+  },
+  "USATO_PER": {
+    "verb": "USE",
+    "object": "",
+    "qualifier": "PER"
+  },
+  "RELAZIONE_TRA": {
+    "verb": "CONNECT",
+    "object": "",
+    "qualifier": ""
+  },
+  "SI_BASI_SU": {
+    "verb": "BASED",
+    "object": "ON",
+    "qualifier": ""
+  },
+  "TIPOLOGIA_DI": {
+    "verb": "DESCRIBE",
+    "object": "TYPE",
+    "qualifier": ""
+  },
+  "UTILIZZATA_IN": {
+    "verb": "USED_IN",
+    "object": "CONTEXT",
+    "qualifier": ""
   }
 }

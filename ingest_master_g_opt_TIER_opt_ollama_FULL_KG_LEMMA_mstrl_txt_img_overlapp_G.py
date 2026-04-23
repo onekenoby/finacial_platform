@@ -273,7 +273,7 @@ MIN_FIN_KEYWORDS = int(os.getenv("MIN_FIN_KEYWORDS", "1"))
 
 KG_TEXT_MAX_CHARS = int(os.getenv("KG_TEXT_MAX_CHARS", "1500"))   # chars sent to KG model per page
 KG_MAX_TRIPLES = int(os.getenv("KG_MAX_TRIPLES", "50"))           # 10 soft cap (sanitize already caps)
-KG_TIMEOUT = int(os.getenv("KG_TIMEOUT", "300"))                   # seconds per KG task/page
+KG_TIMEOUT = int(os.getenv("KG_TIMEOUT", "600"))                   # seconds per KG task/page
 
 # Backward-compat aliases (do NOT use in new code)
 KG_CHARS_LIMIT = KG_TEXT_MAX_CHARS
@@ -358,57 +358,209 @@ RELTYPE_OK = re.compile(r"^[A-Z][A-Z_]{2,60}$")
 
 
 KG_KEYWORDS = [
-    # --- Finanza & Performance ---
-    "risk", "rischio", "yield", "rendimento", "revenue", "ricavi", "profit", "profitto",
-    "earnings", "utili", "ebitda", "margine", "margin", "debt", "debito", "cash", "cassa",
-    "forecast", "previsione", "guidance", "outlook", "dividend", "dividendo", "equity",
-    "capitale", "loss", "perdita",
-    
+    # --- Corporate, Bilancio & Performance ---
+    "risk", "rischio", "risk management", "gestione del rischio",
+    "yield", "rendimento", "return", "total return",
+    "revenue", "ricavi", "sales", "vendite", "turnover", "fatturato",
+    "profit", "profitto", "net income", "utile netto", "earnings", "utili",
+    "ebitda", "ebit", "operating income", "margine", "margin", "gross margin", "operating margin",
+    "debt", "debito", "net debt", "indebitamento", "leverage", "leva finanziaria",
+    "cash", "cassa", "cash flow", "flussi di cassa", "free cash flow",
+    "working capital", "capitale circolante",
+    "forecast", "previsione", "guidance", "outlook", "projection", "stima",
+    "dividend", "dividendo", "payout ratio",
+    "equity", "capitale proprio", "patrimonio netto",
+    "loss", "perdita", "bilancio", "financial statements",
+    "attivo", "asset", "passività", "liabilities",
+    "liquidità", "liquidity", "solvibilità", "solvency",
+    "bancarotta", "bankruptcy", "default", "insolvenza",
+    "rating", "credit rating",
+
     # --- Strategia & Mercato ---
-    "merger", "fusione", "acquisition", "acquisizione", "partnership", "accordo", 
-    "agreement", "subsidiary", "controllata", "stakeholder", "competitor", "concorrente",
-    "market", "mercato", "share", "quota", "strategy", "strategia", "ceo", "management",
-    
-    # --- Macro & Regulation ---
-    "inflation", "inflazione", "rate", "tasso", "fed", "fomc", "ecb", "bce", "gdp", "pil","deflaction","deflazione",
-    "regulation", "regolamento", "compliance", "normativa", "contract", "contratto",
-    "clause", "clausola", "policy", "politica", "esg", "sustainability", "sostenibilità",
+    "merger", "fusione", "acquisition", "acquisizione", "m&a",
+    "takeover", "opa", "buyout", "lbo",
+    "partnership", "accordo", "agreement", "joint venture",
+    "subsidiary", "controllata", "holding", "group",
+    "stakeholder", "shareholder", "azionista",
+    "competitor", "concorrente", "competition",
+    "market", "mercato", "market share", "quota di mercato",
+    "strategy", "strategia", "business model",
+    "ceo", "cfo", "management", "board",
+    "ipo", "initial public offering", "listing", "quotazione",
+    "delisting", "retail", "istituzionale", "institutional",
+    "broker", "dealer", "market maker", "clearing", "settlement",
 
-    # --- AGGIUNTA PER TRANSCRIPT E GESTIONE ---
-    "benchmark", "drawdown", "asset allocation", "sottoperformance", "outperformance",
-    "overweight", "underweight", "gestore", "fund", "fondo", "allocazione", "esposizione",
-    "volatilità", "volatility", "sharpe", "sortino", "beta", "alpha", "track record",
+    # --- Macro, Regulation & Banking ---
+    "inflation", "inflazione", "core inflation",
+    "interest rate", "tasso di interesse", "rate", "tasso",
+    "fed", "fomc", "ecb", "bce", "central bank", "banca centrale",
+    "gdp", "pil", "economic growth", "crescita economica",
+    "deflation", "deflazione", "stagflation", "stagflazione",
+    "spread", "yield spread",
+    "recession", "recessione", "economic downturn",
+    "unemployment", "disoccupazione",
+    "regulation", "regolamentazione", "compliance", "normativa",
+    "contract", "contratto", "clause", "clausola",
+    "policy", "politica monetaria", "fiscal policy",
+    "esg", "sustainability", "sostenibilità", "green finance",
+    "basel", "basilea", "sfdr", "taxonomy", "tassonomia",
+    "audit", "supervision", "vigilanza bancaria",
 
+    # --- Portfolio & Gestione Attiva ---
+    "portfolio", "portafoglio", "portfolio management",
+    "benchmark", "drawdown", "max drawdown",
+    "asset allocation", "allocazione", "strategic allocation", "tactical allocation",
+    "outperformance", "sovraperformance", "underperformance", "sottoperformance",
+    "overweight", "underweight",
+    "fund", "fondo", "asset manager", "gestore",
+    "exposure", "esposizione",
+    "volatility", "volatilità", "realized volatility", "implied volatility",
+    "sharpe ratio", "sortino ratio", "information ratio",
+    "beta", "alpha",
+    "track record", "performance storica",
+    "diversification", "diversificazione",
+    "hedge fund", "etf", "exchange traded fund",
+    "nav", "net asset value",
+    "mutual fund", "sicav",
 
-    # --- AGGIUNTA: Strumenti Derivati & Tecnici ---
-    "opzione", "option", "call", "put", "future", "futures", "forward", "swap",
-    "certificato", "certificate", "warrant", "covered warrant",
-    "premio", "premium", "strike", "strike price", "sottostante", "underlying",
-    "scadenza", "maturity", "esercizio", "exercise", "leva", "leverage",
-    "hedging", "copertura", "speculazione", "arbitraggio", "volatilità implicita",
-    "benchmark", "etf", "nav", "greeks", "delta", "gamma", "theta", "vega"
+    # --- Strumenti, Derivati & Real Estate ---
+    "option", "opzione", "call", "put",
+    "future", "futures", "forward", "swap",
+    "interest rate swap", "credit default swap",
+    "certificate", "certificato",
+    "warrant", "covered warrant",
+    "bond", "obbligazione", "fixed income",
+    "stock", "azione", "equity security",
+    "security", "titolo finanziario",
+    "commodity", "materia prima",
+    "real estate", "immobiliare", "property",
+    "mortgage", "mutuo", "loan", "prestito",
+    "premium", "premio",
+    "strike", "strike price",
+    "underlying", "sottostante",
+    "maturity", "scadenza",
+    "exercise", "esercizio",
+    "leverage", "leva",
+    "hedging", "copertura",
+    "speculation", "speculazione",
+    "arbitrage", "arbitraggio",
+    "implied volatility", "volatilità implicita",
+    "greeks", "delta", "gamma", "theta", "vega", "rho",
 
+    # --- Quant, Algoritmi, Statistica & Analisi Dati ---
+    "chart", "grafico", "graph", "tabella", "table",
+    "trend", "time series", "serie temporali",
+    "axis", "asse", "legend", "legenda",
+    "regression", "regressione", "linear regression",
+    "model", "modello", "statistical model",
+    "algorithm", "algoritmo",
+    "correlation", "correlazione", "covariance", "covarianza",
+    "inference", "inferenza statistica",
+    "variance", "varianza", "standard deviation",
+    "mean", "media", "average", "median", "mediana", "mode", "moda",
+    "cointegration", "cointegrazione",
+    "p-value", "significance", "significatività statistica",
+    "stochastic", "stocastico",
+    "machine learning", "deep learning",
+    "backtest", "backtesting",
+    "feature engineering",
+    "moving average", "media mobile",
+    "rsi", "macd", "bollinger bands",
+    "candlestick", "candele giapponesi",
+    "overbought", "ipercomprato", "oversold", "ipervenduto",
 
-    # --- Analisi Dati & Visual (già nel tuo script) ---
-    "grafico", "graph", "tabella", "trend", "asse", "legenda", "chart", "table", "axis", "legend",
-    "regression", "regressione", "model", "modello", "algorithm", "algoritmo", "correlation", "correlazione",
-    "inference", "inferenza", "variance", "varianza","slope", "mean", "average", "moda", "mode", "modale", "modal"
+    # --- Crypto & Digital Assets ---
+    "crypto", "criptovaluta", "cryptocurrency",
+    "bitcoin", "ethereum",
+    "blockchain", "distributed ledger",
+    "token", "tokenomics",
+    "defi", "decentralized finance",
+    "smart contract",
+    "stablecoin",
+    "staking", "mining",
+    "wallet", "crypto wallet",
+    "exchange", "crypto exchange", "dex",
+    "nft", "non-fungible token"
 ]
 
 
-# =========================
-# SEMANTIC GATEKEEPER CONFIG
-# =========================
-# Definiamo i "Centroidi" tematici. Se un chunk è simile a questi, passa.
+# =========================================================
+# SEMANTIC GATEKEEPER CONFIG - ULTIMATE FINANCE EDITION
+# =========================================================
+# Centroidi semantici ad altissima densità per catturare il 100% dello spettro finanziario
 GATEKEEPER_CONCEPTS = [
-    "Financial markets analysis and trading strategies",
-    "Risk management, volatility, and performance metrics",
-    "Derivatives, options, futures, and financial instruments definition", # <--- Questo cattura il tuo chunk sulle opzioni!
-    "Corporate strategy, mergers, acquisitions, and dividends",
-    "Macroeconomic indicators, inflation, and central bank policies",
-    "ESG sustainability, regulations, and compliance (SFDR, Taxonomy)"
+    # 1. Macro & Politica Monetaria
+    "Macroeconomics, monetary policy, fiscal policy, inflation, core inflation, deflation, stagflation, disinflation, central banks, policy rates, real vs nominal rates, yield curves, GDP, GNP, output gap, employment data, NAIRU, CPI, PPI, leading/lagging indicators, business cycles, liquidity conditions, money supply (M0, M1, M2), velocity of money, QE, QT, forward guidance, sovereign debt, fiscal deficits, trade balances, capital flows, exchange rates, and macroeconomic shocks",
+    
+    # 2. FX & Tassi di Cambio
+    "Foreign exchange (FX), currency pairs, spot rates, forward rates, FX swaps, carry trade, interest rate parity, purchasing power parity (PPP), exchange rate regimes, currency volatility, central bank interventions, capital controls, and cross-currency basis",
+    
+    # 3. Corporate Finance & Accounting
+    "Corporate finance, financial statements, balance sheets, income statements, cash flow statements, EBITDA, EBIT, operating income, net income, revenue recognition, deferred revenue, working capital, capital structure, WACC, cost of equity, cost of debt, DCF, free cash flow, financial ratios, IFRS/GAAP, goodwill, impairments, depreciation, leverage ratios, interest coverage, dividends, and auditing",
+    
+    # 4. Equity Markets & Valuation
+    "Equity markets, stock trading, valuation models, intrinsic value, market capitalization, growth vs value, factor investing, M&A, IPOs, secondary offerings, dividends, share buybacks, equity research, analyst ratings, earnings estimates, P/E, forward P/E, P/B, EV/EBITDA, earnings yield, and sector rotation",
+    
+    # 5. Fixed Income & Credit Markets
+    "Fixed income, government bonds, sovereign debt, corporate bonds, high-yield bonds, investment-grade bonds, credit ratings, yield curves, YTM, duration, convexity, credit spreads, term structure, default risk, recovery rates, inflation-linked bonds, floating rate notes, repo markets, and securities lending",
+    
+    # 6. Derivatives & Structured Products
+    "Derivatives, options pricing (Black-Scholes, binomial, Monte Carlo), futures, forwards, swaps, CDS, structured products, exotic options, volatility surfaces, implied vs realized volatility, variance swaps, correlation products, and Greeks (Delta, Gamma, Vega, Theta, Rho)",
+    
+    # 7. Quantitative Finance Core
+    "Quantitative finance, stochastic calculus, Brownian motion, Ito lemma, factor models, risk premia, alpha factors, statistical arbitrage, mean reversion, momentum strategies, and quantitative modeling",
+    
+    # 8. Algorithmic & High-Frequency Trading
+    "Algorithmic trading, high-frequency trading, execution algorithms (TWAP, VWAP), smart order routing, market microstructure, limit order books, order flow, latency arbitrage, slippage, transaction costs, and liquidity modeling",
+    
+    # 9. Machine Learning & AI in Finance
+    "Machine learning in finance, supervised learning, unsupervised learning, reinforcement learning, deep learning, feature engineering, model validation, overfitting, cross-validation, explainability, and AI-driven trading strategies",
+    
+    # 10. Time Series & Signal Processing
+    "Time series analysis, stationarity, autocorrelation, ARIMA models, GARCH models, cointegration, Kalman filters, regime switching models, spectral analysis, and financial signal processing",
+    
+    # 11. Risk Management
+    "Risk management, VaR (parametric, historical, Monte Carlo), expected shortfall, stress testing, scenario analysis, tail risk, drawdowns, volatility clustering, skewness, kurtosis, and risk decomposition",
+    
+    # 12. Portfolio Management
+    "Portfolio management, mean-variance optimization, efficient frontier, Black-Litterman, asset allocation, diversification, beta, alpha, Sharpe ratio, Sortino ratio, information ratio, and performance attribution",
+    
+    # 13. Banking & Financial Intermediation
+    "Banking systems, financial intermediation, deposit-taking, lending, credit creation, net interest margin, loan books, securitization, shadow banking, and financial institutions",
+    
+    # 14. Regulation & Compliance
+    "Financial regulation, Basel accords (I-IV), capital adequacy, CET1 ratio, leverage ratio, LCR, NSFR, stress testing, systemic risk, macroprudential policy, AML, KYC, and regulatory compliance",
+    
+    # 15. ESG & Sustainable Finance
+    "ESG investing, sustainable finance, impact investing, green bonds, social bonds, ESG ratings, climate risk, transition risk, carbon markets, sustainability reporting (GRI, SASB, TCFD), and EU taxonomy",
+    
+    # 16. Alternative Investments
+    "Alternative investments, hedge funds, private equity, venture capital, growth equity, LBO, distressed debt, special situations, infrastructure investments, and fund strategies",
+    
+    # 17. Real Estate & Structured Credit
+    "Real estate, commercial and residential property, REITs, mortgages, MBS, ABS, CDOs, structured credit, tranching, and real estate valuation",
+    
+    # 18. Commodities & Energy Markets
+    "Commodities markets, energy trading, metals, agriculture, futures on commodities, spot vs futures pricing, contango, backwardation, storage costs, and commodity derivatives",
+    
+    # 19. Cryptocurrencies & Digital Assets
+    "Cryptocurrencies, blockchain, DLT, DeFi, tokenomics, smart contracts, NFTs, stablecoins, staking, mining, consensus mechanisms (PoW, PoS), layer 1/2, and on-chain analytics",
+    
+    # 20. Behavioral Finance
+    "Behavioral finance, cognitive biases, heuristics, loss aversion, overconfidence, herd behavior, prospect theory, investor sentiment, and behavioral anomalies",
+    
+    # 21. Technical Analysis
+    "Technical analysis, chart patterns, support/resistance, trend lines, moving averages, RSI, MACD, Bollinger Bands, momentum indicators, volume analysis, and trading signals",
+    
+    # 22. Market Microstructure Advanced
+    "Market microstructure theory, price formation, bid-ask spread, order types, limit vs market orders, liquidity provision, adverse selection, and high-frequency dynamics",
+    
+    # 23. Financial Data & Infrastructure
+    "Financial data engineering, market data feeds, tick data, data pipelines, data cleaning, data normalization, APIs, low-latency systems, cloud infrastructure, and trading systems architecture",
+    
+    # 24. Financial Modeling & Forecasting
+    "Financial modeling, forecasting, scenario modeling, sensitivity analysis, Monte Carlo simulation, econometric models, predictive analytics, and valuation modeling"
 ]
-
 # Cache per gli embedding delle ancore (calcolati una volta sola all'avvio)
 _GK_ANCHOR_EMBEDDINGS = None
 
@@ -788,31 +940,38 @@ Task:
 Return ONLY valid JSON with the SAME schema as VISION_JSON.
 """
 
-KG_PROMPT = """
-You are a High-Fidelity Knowledge Engineer.
-Extract a DETAILED Knowledge Graph.
+KG_PROMPT = """You are a Financial Knowledge Graph Expert.
+Extract entities and relationships from the text.
 
-RULES:
-- Extract AS MANY entities as possible (Concepts, Metrics, Instruments, Regulations).
-- Extract ALL relationships defined in the text.
-- DO NOT summarize. Be exhaustive.
-- If a sentence contains a causal link, extract it.
+TAXONOMY (You MUST choose one of these for the 'category' field):
+- ALGORITHM (e.g., MACD, VECM, Random Forest)
+- INDICATOR (e.g., Media mobile, RSI, Volatilità)
+- METRIC (e.g., Prezzo, Drawdown, Rendimento)
+- INSTRUMENT (e.g., Azione, Opzione, Future)
+- CONCEPT (e.g., Cointegrazione, Inversione di tendenza)
 
-OUTPUT:
-- Return ONLY valid JSON
-- NO markdown, NO explanations
-- EXACT schema:
+PROPERTIES (You MUST populate the 'props' object):
+- 'description': A brief definition in Italian (max 15 words).
+- 'formula': The mathematical LaTeX formula if explicitly mentioned in the text (otherwise leave empty).
+- 'synonyms': Array of alternative names or acronyms (e.g., ["EMA", "Exponential Moving Average"]).
+
+Return ONLY valid JSON with this exact schema:
 {
   "nodes": [
-    {"id": "...", "label": "...", "type": "...", "properties": {}}
+    {
+      "id": "Specific Name (e.g., Media Mobile Esponenziale)", 
+      "category": "INDICATOR",
+      "props": {
+        "description": "Media ponderata che dà più peso alle osservazioni recenti.",
+        "formula": "XMA_t = (1 - \\alpha)XMA_{t-1} + \\alpha P_t",
+        "synonyms": ["EMA", "Exponential Moving Average"]
+      }
+    }
   ],
   "edges": [
-    {"source": "...", "target": "...", "relation": "...", "properties": {}}
+    {"source": "Entity 1", "target": "Entity 2", "relation": "VERB_IN_UPPERCASE", "props": {}}
   ]
 }
-
-If nothing can be extracted, return:
-{"nodes": [], "edges": []}
 """
 
 
@@ -1432,11 +1591,12 @@ def safe_json_extract(raw: str):
     """
     Estrae in modo robusto il primo JSON valido (dict/list) da una risposta LLM.
     Gestisce:
-      - code fences ```json ... ```
+      - code fences (backticks)
       - testo prima/dopo il JSON
       - caratteri di controllo / null bytes
       - smart quotes
       - trailing commas
+      - FIX LATEX: Escaping automatico per sintassi LaTeX (\\sum -> \\\\sum)
     Ritorna: dict | list | None
     """
     import json, re
@@ -1447,8 +1607,11 @@ def safe_json_extract(raw: str):
     s = str(raw)
 
     # 1) strip code fences
-    #    prende il contenuto interno se la risposta è tipo ```json ... ```
-    fence = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", s, flags=re.IGNORECASE)
+    # FIX ANTI-BUG COPIA/INCOLLA: Usiamo la moltiplicazione per creare i backtick
+    # così l'interfaccia della chat non si confonde!
+    fence_pattern = "`" * 3 + r"(?:json)?\s*([\s\S]*?)\s*" + "`" * 3
+    fence = re.search(fence_pattern, s, flags=re.IGNORECASE)
+    
     if fence:
         s = fence.group(1)
 
@@ -1506,15 +1669,21 @@ def safe_json_extract(raw: str):
     except Exception:
         pass
 
-    # 5) micro-repair: trailing commas + spazi strani
+    # 5) micro-repair: trailing commas + spazi strani + LATEX ESCAPING
     repaired = cand
     repaired = re.sub(r",\s*([}\]])", r"\1", repaired)  # trailing commas
     repaired = repaired.strip()
 
+    # 🔥 FIX CRITICO LATEX ESCAPING 🔥
+    # Trova tutti i backslash (es. \sum, \frac) non seguiti da valid json escapes (" \ / b f n r t u)
+    # e li raddoppia (\\sum) per evitare il crash del parser JSON.
+    repaired = re.sub(r'\\(?=[^"\\/bfnrtu])', r'\\\\', repaired)
+
     # 6) riprova
     try:
         return json.loads(repaired)
-    except Exception:
+    except Exception as e:
+        print(f"      [JSON-REPAIR-FAILED] Impossibile recuperare il JSON: {e}")
         return None
 
 
@@ -2142,21 +2311,21 @@ def ensure_qdrant_collection():
 NEO4J_BATCH_QUERY = """
 UNWIND $rows AS r
 
-// 1) Documento (Radice)
+// 1) Documento
 MERGE (d:Document {doc_id: r.doc_id})
 SET d.filename = r.filename,
     d.doc_type = r.doc_type,
     d.log_id = r.log_id,
     d.ingested_at = datetime()
 
-// 2) Pagina (Contesto intermedio)
+// 2) Pagina
 WITH d, r
 MERGE (p:Page {pid: r.doc_id + "::" + toString(r.page_no)})
 SET p.doc_id = r.doc_id,
     p.page_no = r.page_no
 MERGE (d)-[:HAS_PAGE]->(p)
 
-// 3) Chunk (Il perno della granularità)
+// 3) Chunk
 WITH p, r
 MERGE (c:Chunk {id: r.chunk_id})
 SET c.chunk_index = r.chunk_index,
@@ -2168,57 +2337,18 @@ SET c.chunk_index = r.chunk_index,
     c.ontology = r.ontology
 MERGE (p)-[:HAS_CHUNK]->(c)
 
-// 4) Esplosione Entità: MENTIONED_IN verso il CHUNK
+// 4) Entità (collegate ESCLUSIVAMENTE al Chunk)
 WITH r, c
-CALL (r, c) {
-  UNWIND coalesce(r.nodes, []) AS n
-  WITH n, c
-  WHERE n.id IS NOT NULL AND n.id <> ""
+UNWIND coalesce(r.nodes, []) AS n
+WITH n, c
+WHERE n.id IS NOT NULL AND n.id <> ""
 
-  MERGE (e:Entity {id: n.id})
-  ON CREATE SET e.label = n.label,
-                e.kinds = [coalesce(n.type, "Entity")]
-  SET e += coalesce(n.props, {}),
-      e.label = coalesce(e.label, n.label)
+MERGE (e:Entity {id: n.id})
+SET e.name = n.id,
+    e.category = CASE WHEN n.category IS NOT NULL AND n.category <> 'UNCLASSIFIED' THEN n.category ELSE coalesce(e.category, 'UNCLASSIFIED') END
+SET e += coalesce(n.props, {})
 
-  // Aggiorna i tipi di entità senza duplicati
-  FOREACH (_ IN CASE
-    WHEN NOT coalesce(n.type,"Entity") IN coalesce(e.kinds, [])
-    THEN [1] ELSE []
-  END |
-    SET e.kinds = coalesce(e.kinds, []) + [coalesce(n.type,"Entity")]
-  )
-
-  // RELAZIONE GRANULARE: L'entità appartiene a QUESTO specifico frammento di testo
-  MERGE (e)-[:PRESENT_IN]->(c)
-  RETURN count(*) AS node_count
-}
-
-// 5) Relazioni tra entità (Versione Nativa senza APOC)
-WITH r
-CALL (r) {
-  UNWIND coalesce(r.edges, []) AS rel
-  WITH rel
-  WHERE rel.source IS NOT NULL AND rel.target IS NOT NULL
-    AND rel.source <> rel.target
-    AND rel.relation IS NOT NULL AND rel.relation <> ""
-
-  MERGE (s:Entity {id: rel.source})
-  MERGE (t:Entity {id: rel.target})
-  
-  // Sostituzione di APOC con MERGE nativo
-  // Usiamo RELATES_TO come tipo base e salviamo l'azione specifica nelle proprietà
-  MERGE (s)-[r_out:RELATES_TO]->(t)
-  SET r_out.type = rel.relation,
-      r_out += coalesce(rel.props, {}),
-      r_out.last_seen = datetime(),
-      r_out.count = coalesce(r_out.count, 0) + 1,
-      r_out.raw_relation = coalesce(rel.props.raw_relation, rel.relation)
-      
-  RETURN count(*) AS rel_count
-}
-
-RETURN count(*) AS processed
+MERGE (e)-[:PRESENT_IN]->(c)
 """
 
 # Formula nodes deterministici
@@ -2294,7 +2424,7 @@ def canonicalize_edges(edges: list[dict]) -> list[dict]:
     return out
 
 def _normalize_graph_schema(js):
-    """Versione Hardened: Garantisce la presenza di ID e Liste per Neo4j."""
+    """Versione Aggiornata: Preserva category e props per Neo4j e gestisce allucinazioni di tipo."""
     if js is None: return None
     if isinstance(js, list):
         js = {"nodes": js, "edges": []}
@@ -2307,22 +2437,35 @@ def _normalize_graph_schema(js):
     for n in raw_nodes:
         if not isinstance(n, dict): continue
         x = dict(n)
-        # Neo4j MERGE ha bisogno di un ID univoco e non nullo
+        
+        # Estrazione dell'ID
         eid = x.get("id") or x.get("name") or x.get("label")
-        if not eid: continue
         
+        # 🔥 FIX STRUTTURALE: Gestione universale dei tipi (Defensive Programming)
+        if isinstance(eid, list):
+            # Se crea una lista, unisce tutti gli elementi. 
+            # Es: ["Media", "Mobile"] -> "Media Mobile"
+            eid = " ".join(str(item) for item in eid if item).strip()
+        elif isinstance(eid, dict):
+            # Se allucina un dizionario, estrae i valori.
+            # Es: {"name": "Prezzo"} -> "Prezzo"
+            eid = " ".join(str(val) for val in eid.values() if val).strip()
+            
+        if not eid or str(eid).strip() == "":
+            continue
+            
         x["id"] = normalize_entity_id(str(eid))
-        x["label"] = str(x.get("label") or x.get("type") or "Entity").upper()
-        x["type"] = _clean_type(x.get("type") or "Entity")
         
-        # Assicura che le properties siano un dict piatto
-        props = x.get("properties") or {}
+        # FIX: Salviamo esplicitamente la category
+        x["category"] = str(x.get("category") or x.get("type") or x.get("label") or "UNCLASSIFIED").upper()
+        
+        # FIX: Assicura che le 'props' siano un dict
+        props = x.get("props") or x.get("properties") or {}
         if not isinstance(props, dict): props = {}
-        # Sposta eventuali chiavi extra in properties
         for k, v in x.items():
-            if k not in ("id", "label", "type", "properties"):
+            if k not in ("id", "label", "type", "properties", "category", "props"):
                 props[k] = v
-        x["properties"] = _flat_props(props)
+        x["props"] = _flat_props(props)
         nnodes.append(x)
     
     g["nodes"] = nnodes
@@ -2340,13 +2483,14 @@ def _normalize_graph_schema(js):
                 "source": normalize_entity_id(str(s)),
                 "target": normalize_entity_id(str(t)),
                 "relation": _clean_rel(r),
-                "properties": _flat_props(e.get("properties") or {})
+                "props": _flat_props(e.get("props") or e.get("properties") or {}) # FIX per archi
             })
     g["edges"] = eedges
     return g
 
 
 def _sanitize_graph(graph: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Versione Aggiornata: Invia category e props corrette al Database."""
     if not isinstance(graph, dict):
         return [], []
 
@@ -2354,37 +2498,40 @@ def _sanitize_graph(graph: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, An
     edges: List[Dict[str, Any]] = []
     seen_nodes = set()
 
-    # --- NODES (Mapping Alias & Deduplicazione) ---
-    raw_nodes = graph.get("nodes") or graph.get("entities") or graph.get("concepts") or []
-    # FIX: Verifica che raw_nodes sia una lista prima di iterare
+    # --- NODES ---
+    raw_nodes = graph.get("nodes") or []
     if isinstance(raw_nodes, list):
         for n in raw_nodes:
-            if not isinstance(n, dict):
-                continue
+            if not isinstance(n, dict): continue
 
-            # Mappa id da varie possibili chiavi (name, label, key)
-            nid = n.get("id") or n.get("name") or n.get("label") or n.get("key")
-            label = n.get("label") or n.get("name") or nid
-            ntype = n.get("type") or n.get("kind") or n.get("category") or "Entity"
-            props = n.get("properties") or n.get("metadata") or n.get("attributes") or {}
+            nid = n.get("id")
+            if not nid or str(nid) in seen_nodes: continue
+            seen_nodes.add(str(nid))
 
-            if not nid:
-                continue
-
-            nid = str(nid)
-            if nid in seen_nodes:
-                continue
-            seen_nodes.add(nid)
-
-            if not isinstance(props, dict):
-                props = {}
-
+            # FIX: Inserisce le chiavi corrette che la query Cypher sta aspettando
             nodes.append({
-                "id": nid,
-                "label": str(label) if label else nid,
-                "type": str(ntype),
-                "properties": props
+                "id": str(nid),
+                "category": str(n.get("category", "UNCLASSIFIED")),
+                "props": n.get("props", {})
             })
+
+    # --- EDGES ---
+    raw_edges = graph.get("edges") or []
+    if isinstance(raw_edges, list):
+        for e in raw_edges:
+            if not isinstance(e, dict): continue
+            src = e.get("source")
+            tgt = e.get("target")
+            if not src or not tgt: continue
+
+            edges.append({
+                "source": str(src),
+                "target": str(tgt),
+                "relation": str(e.get("relation", "RELATED_TO")),
+                "props": e.get("props", {})
+            })
+
+    return nodes[:80], edges[:100]
 
     # --- EDGES (Mapping Alias & Validazione) ---
     raw_edges = graph.get("edges") or graph.get("relationships") or graph.get("relations") or graph.get("links") or []
@@ -2421,11 +2568,48 @@ def _sanitize_graph(graph: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, An
 def flush_neo4j_rows_batch(rows: List[Dict[str, Any]]):
     if not NEO4J_ENABLED or not rows:
         return
+    
     try:
         with neo4j_driver.session() as session:
+            # A. Inserimento Struttura e Nodi
             session.run(NEO4J_BATCH_QUERY, rows=rows)
+
+            # B. Inserimento Relazioni Native (Raggruppate per Tipo)
+            edges_by_type = {}
+            for r in rows:
+                for edge in r.get("edges", []):
+                    rel_type = edge.get("relation", "RELATES_TO").upper().replace(" ", "_")
+                    rel_type = "".join(c for c in rel_type if c.isalnum() or c == "_")
+                    
+                    if not rel_type:
+                        continue
+                        
+                    if rel_type not in edges_by_type:
+                        edges_by_type[rel_type] = []
+                    
+                    edges_by_type[rel_type].append({
+                        "source": edge.get("source"),
+                        "target": edge.get("target"),
+                        # 🚀 FIX: Usa 'props' invece di 'properties' per non perdere i dati dell'arco
+                        "props": edge.get("props", {}) 
+                    })
+
+            # Eseguiamo query specifiche per tipo di verbo
+            for rel_type, edges in edges_by_type.items():
+                edge_query = f"""
+                UNWIND $batch AS e
+                MATCH (s:Entity {{id: e.source}})
+                MATCH (t:Entity {{id: e.target}})
+                MERGE (s)-[r:{rel_type}]->(t)
+                SET r += coalesce(e.props, {{}}),
+                    r.last_seen = datetime(),
+                    r.count = coalesce(r.count, 0) + 1
+                """
+                session.run(edge_query, batch=edges)
+
     except Exception as e:
         print(f"   ⚠️ Neo4j Batch Error: {e}")
+
 
 def flush_neo4j_formulas_batch(rows: List[Dict[str, Any]]):
     if not NEO4J_ENABLED or not rows:
@@ -3058,241 +3242,129 @@ def build_formula_semantic_chunk(page_no: int, formulas_json: Dict[str, Any]) ->
 # =========================
 def llm_extract_kg(filename: str, page_no, text: str, model_name: str):
     """
-    Estrazione KG Robusta (V3.2 - Anti-Hang & Type Safe):
-    - Tentativo 1: JSON Mode Strict.
-    - Tentativo 2: Fallback su RAW Mode con contesto ridotto (evita freeze su bibliografie).
-    - Gestisce risposte JSON che sono liste invece di dict.
+    Estrazione KG Unificata e Pulita.
+    Schema FLAT ottimizzato per LLM 8B/9B.
     """
     base = os.path.basename(str(filename))
-    
-    # Se il testo è troppo breve, inutile chiamare l'LLM
-    if not text or len(text) < 50: 
+    if not text or len(text) < 50:
         return [], []
 
-    # ------------------------------------------------------------
-    # TENTATIVO 1: JSON MODE (Strict & High Quality)
-    # ------------------------------------------------------------
-    try:
-        resp = chat(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": KG_PROMPT},
-                {"role": "user", "content": f"Extract entities and relations from this text:\n\n{text}"}
-            ],
-            format="json", 
-            # Cerca la chiamata chat e modifica le options:
-            options={
-                "temperature": 0.0, 
-                "num_predict": 800,   # Non serve di più per 15-20 nodi
-                "num_ctx": 2048,      # FONDAMENTALE: ridotto per non saturare la VRAM
-                "top_k": 20,
-                "top_p": 0.9
-            }
-        )
-        
-        raw_content = resp.get("message", {}).get("content", "").strip()
-        if not raw_content:
-            return [], []
+    # UNICO PROMPT: FLAT SCHEMA
+    FLAT_KG_PROMPT = """You are an Expert Financial Knowledge Graph Extractor.
+Extract entities and highly dense, logically coherent relationships from the text.
 
-        # Parsing JSON
-        data = json.loads(raw_content)
-        
-        # --- FIX ROBUSTEZZA TIPO (List vs Dict) ---
-        if isinstance(data, list):
-            if len(data) > 0 and isinstance(data[0], dict):
-                # Caso: il modello ha ritornato [{"nodes": ...}]
-                data = data[0]
-            else:
-                # Caso: lista piatta o incomprensibile, invalida per noi
-                data = {} 
-        # ------------------------------------------
+TAXONOMY (Choose ONE for 'category'):
+- ORGANIZATION (e.g., Company, Central Bank)
+- PERSON (e.g., CEO, Analyst)
+- FINANCIAL_INSTRUMENT (e.g., Stock, Bond, Derivative)
+- MODEL_OR_METRIC (e.g., Mathematical/Statistical Model, Algorithm, Indicator, Financial Ratio, Math Formula, Price, Moving Average, ARIMA, GDP)
+- EVENT (e.g., Merger, Market Crash)
+- REGULATION (e.g., Law, Contract)
+- CONCEPT (e.g., Risk, Strategy, Trend, Volatility)
+- PARAMETER_OR_VARIABLE (e.g., Alpha, Weight, Time, Lags, Standard Deviation)
+- VISUAL_ASSET (e.g., Bar Chart, Line Chart, Candlestick, Table)
+- MARKET_TREND_OR_OBSERVATION (e.g., Uptrend, Peak, Bearish Divergence)
 
-        nodes = data.get("nodes", data.get("entities", []))
-        edges = data.get("edges", data.get("relationships", []))
-        
-        # Se abbiamo trovato qualcosa, ritorniamo subito
-        if nodes or edges:
-            return nodes, edges
+RELATION VOCABULARY (Use these EXACT UPPERCASE verbs whenever possible):
+- HIERARCHY: IS_A, PART_OF, BELONGS_TO
+- MARKET DYNAMICS: CORRELATES_WITH, OUTPERFORMS, UNDERPERFORMS, DRIVES, REVERSES
+- RISK & STRATEGY: HEDGES_AGAINST, MITIGATES_RISK_OF, EXPOSED_TO, DIVERSIFIES
+- COMPUTATION & MATH: CALCULATED_USING, PARAMETERIZED_BY, DERIVED_FROM, MEASURES, FORECASTS
+- VISUALIZATION: VISUALIZES, COMPARES, HIGHLIGHTS_TREND, SOURCED_FROM
+- CORPORATE & LEGAL: ISSUES, ACQUIRES, REGULATES, PENALIZES
 
-    except json.JSONDecodeError:
-        print(f"   ⚠️ [KG-RETRY] {base} p{page_no}: JSON incompleto/troncato. Riprovo in RAW mode...")
-        # Non ritorniamo, lasciamo scorrere verso il Tentativo 2
-    except Exception as e:
-        print(f"   ⚠️ [KG-ERR] {base} p{page_no}: {e}")
-        return [], []
-    
-    # ------------------------------------------------------------
-    # TENTATIVO 2: RAW MODE (Fallback / Anti-Hang)
-    # ------------------------------------------------------------
-    # Usato quando il JSON mode fallisce o si tronca.
-    # PROMPT SEMPLIFICATO e CONTESTO RIDOTTO per sbloccare i thread "Zombie".
-    
-    SIMPLE_KG_PROMPT = """You are a Knowledge Graph Expert.
-Extract entities and relationships from the text.
-Return ONLY valid JSON.
-Schema: {"nodes": [{"id": "X", "label": "Y"}], "edges": [{"source": "A", "target": "B", "relation": "C"}]}
-"""
-    try:
-        # Tagliamo il testo per il retry per evitare che un chunk enorme
-        # (es. bibliografia piena di link) mandi in loop il modello.
-        retry_text = text[:2500] 
+PROPERTIES DYNAMICS (You MUST populate the 'props' object):
+- 'description': Brief definition in Italian (max 15 words). MUST NOT BE EMPTY.
+- 'formula': LaTeX formula. ONLY populate this on MODEL_OR_METRIC nodes. Omit if not present.
+- 'synonyms': Array of strings. YOU MUST ADD AT LEAST ONE SYNONYM OR ACRONYM. NEVER LEAVE EMPTY.
 
-        resp = chat(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": SIMPLE_KG_PROMPT},
-                {"role": "user", "content": f"Analyze this text:\n\n{retry_text}"}
-            ],
-            # NO format="json" qui (lasciamo libertà al modello per correggere errori)
-            options={
-                "temperature": 0.1, 
-                "num_predict": 2048, # Meno token output
-                "num_ctx": 2048      # <--- ANTI-HANG: Riduciamo la RAM richiesta per il retry
-            }
-        )
-        raw_content = resp.get("message", {}).get("content", "")
-        
-        # Usa la funzione helper (che deve essere presente nello script)
-        js = safe_json_extract(raw_content)
-        
-        if js:
-            # --- FIX ROBUSTEZZA TIPO ANCHE QUI ---
-            if isinstance(js, list):
-                if len(js) > 0 and isinstance(js[0], dict):
-                    js = js[0]
-                else:
-                    js = {}
-            # -------------------------------------
+GRAPH DENSITY, MATH & VISUAL RULES (CRITICAL):
+1. MATHEMATICAL DECONSTRUCTION: If a mathematical/statistical model, algorithm, or formula is described, extract the main model/indicator AND its individual variables/parameters as separate nodes. Connect them logically (e.g., [Black-Scholes] -[:CALCULATED_USING]-> [Volatility]).
+2. VISUAL DECONSTRUCTION: If a chart, table, or visual asset is described, extract the asset itself as a VISUAL_ASSET. Extract the metrics it shows and the trends it highlights. Connect them (e.g., [Bar Chart] -[:VISUALIZES]-> [Revenue]).
+3. MAXIMIZE COHERENT CONNECTIONS: Form cross-linked webs ONLY if semantically supported by the text. NO ISOLATED NODES.
+4. EVIDENCE-BASED: Provide a short 'evidence' property for every edge explaining WHY they are connected based on the text.
 
-            nodes = js.get("nodes", js.get("entities", []))
-            edges = js.get("edges", js.get("relationships", []))
-            return nodes, edges
-        else:
-            # Se fallisce anche il retry, amen. Non blocchiamo tutto.
-            return [], []
-
-    except Exception as e:
-        # Silenziamo l'errore critico nel retry per non sporcare il log
-        return [], []
-    
-    # ------------------------------------------------------------
-    # TENTATIVO 2: RAW MODE (Fallback)
-    # ------------------------------------------------------------
-    # (Inserisci qui il resto della funzione come nel codice precedente...)
-    # Assicurati di applicare lo stesso controllo "isinstance(js, list)" anche qui sotto
-    
-    SIMPLE_KG_PROMPT = """You are a Knowledge Graph Expert.
-    Extract entities and relationships from the text.
-    Return ONLY valid JSON.
-    Schema: {"nodes": [], "edges": []}
-    """
-    try:
-        resp = chat(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": SIMPLE_KG_PROMPT},
-                {"role": "user", "content": f"Analyze this text:\n\n{text[:3000]}"}
-            ],
-            options={"temperature": 0.1, "num_predict": 3000, "num_ctx": 4096}
-        )
-        raw_content = resp.get("message", {}).get("content", "")
-        js = safe_json_extract(raw_content)
-        
-        if js:
-            # --- FIX LISTA ANCHE QUI ---
-            if isinstance(js, list):
-                if len(js) > 0 and isinstance(js[0], dict):
-                    js = js[0]
-                else:
-                    js = {}
-            # ---------------------------
-
-            nodes = js.get("nodes", js.get("entities", []))
-            edges = js.get("edges", js.get("relationships", []))
-            return nodes, edges
-        else:
-            # print(f"   ❌ [KG-FAIL] {base} p{page_no}: Recupero fallito.")
-            return [], []
-
-    except Exception as e:
-        # print(f"   ❌ [KG-CRITICAL] {base} p{page_no}: {e}")
-        return [], []
-
-
-    
-    # ------------------------------------------------------------
-    # Chiamata LLM
-    # ------------------------------------------------------------
-    
-    # SYSTEM PROMPT SEMPLIFICATO PER EVITARE CONFUSIONE
-    SIMPLE_KG_PROMPT = """You are a Knowledge Graph Expert.
-Extract entities (concepts, persons, metrics) and relationships from the text.
-Return ONLY valid JSON with this schema:
+Return ONLY valid JSON using this exact schema:
 {
-  "nodes": [{"id": "ConceptName", "label": "CATEGORY"}],
-  "edges": [{"source": "ConceptName", "target": "OtherConcept", "relation": "VERB"}]
+  "nodes": [
+    {
+      "id": "Specific Concept Name (String only)",
+      "category": "MODEL_OR_METRIC",
+      "props": {
+        "description": "...",
+        "formula": "...",
+        "synonyms": ["English Translation", "Acronym"]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Entity 1", 
+      "target": "Entity 2", 
+      "relation": "CALCULATED_USING",
+      "props": { "evidence": "Short quote or reason from text" }
+    }
+  ]
 }
 """
 
-    # TENTATIVO 1: JSON MODE (Strict)
     try:
+        # TENTATIVO 1: JSON MODE
         resp = chat(
             model=model_name,
             messages=[
-                {"role": "system", "content": SIMPLE_KG_PROMPT},
-                {"role": "user", "content": f"Analyze this text:\n\n{text[:3500]}"}
+                {"role": "system", "content": FLAT_KG_PROMPT},
+                {"role": "user", "content": f"Extract entities and relations in JSON format from this text:\n\n{text[:3500]}"}
             ],
             format="json",
             options={
-                            "temperature": 0.0, 
-                            "num_predict": 2500, # Aumentato da 1200 a 2500
-                            "num_ctx": 8192      # Aumentato per gestire meglio la memoria di lavoro di Gemma 2
-                        }
-                    )
-        content = resp.get("message", {}).get("content", "")
-        
-        # Validazione Immediata
-        if content:
-            js = json.loads(content)
-            nodes = js.get("nodes", js.get("entities", []))
-            edges = js.get("edges", js.get("relationships", []))
-            return nodes, edges
-            
-    except Exception as e:
-        # Se fallisce, non stampiamo errore, andiamo diretti al retry
-        pass
-
-    # TENTATIVO 2: RAW MODE (Fallback) + DEBUG
-    print(f"   ⚠️ [KG-RETRY] {base} p{page_no}: JSON mode failed. Retrying raw...")
-    
-    try:
-        resp = chat(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": SIMPLE_KG_PROMPT + "\nIMPORTANT: Do not use Markdown blocks. Just raw JSON."},
-                {"role": "user", "content": f"Analyze this text:\n\n{text[:3500]}"}
-            ],
-            # NO format="json" qui
-            options={"temperature": 0.1, "num_ctx": 3584}
+                "temperature": 0.0,
+                "num_predict": 2500,
+                "num_ctx": 4096
+            }
         )
-        raw_content = resp.get("message", {}).get("content", "")
-        
-        # Debug: Vediamo cosa risponde se fallisce ancora
-        # print(f"   🐛 DEBUG RAW RESPONSE: {raw_content[:100]}...") 
+        raw_content = resp.get("message", {}).get("content", "").strip()
+        js = safe_json_extract(raw_content)
 
-        js = _extract_json_substring(raw_content)
-        if js:
-            nodes = js.get("nodes", js.get("entities", []))
-            edges = js.get("edges", js.get("relationships", []))
-            return nodes, edges
-        else:
-            print(f"   ❌ [KG-FAIL] {base} p{page_no}: No valid JSON found in response.")
+        if not js or not isinstance(js, dict) or not js.get("nodes"):
+            raise ValueError("JSON incompleto o senza nodi")
+
+    except Exception as e:
+        print(f"   ⚠️ [KG-RETRY] Pag {page_no}: Fallito JSON mode. Riprovo in RAW mode...")
+        try:
+            # TENTATIVO 2: RAW MODE (Fallback robusto)
+            resp = chat(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": FLAT_KG_PROMPT + "\nIMPORTANT: Return ONLY raw JSON. No markdown blocks."},
+                    {"role": "user", "content": f"Extract entities and relations from this text:\n\n{text[:3000]}"}
+                ],
+                options={
+                    "temperature": 0.1,
+                    "num_predict": 2048,
+                    "num_ctx": 4096
+                }
+            )
+            raw_content = resp.get("message", {}).get("content", "")
+            js = safe_json_extract(raw_content)
+
+            if not js or not isinstance(js, dict):
+                return [], []
+
+        except Exception as e2:
+            print(f"   ❌ [KG-ERR] Pag {page_no}: Fallimento totale ({e2})")
             return [], []
 
-    except Exception as e:
-        print(f"   ❌ [KG-CRITICAL] {base} p{page_no}: {e}")
-        return [], []
+    nodes = js.get("nodes", js.get("entities", []))
+    edges = js.get("edges", js.get("relationships", []))
 
+    # DEBUG RADAR
+    if nodes:
+        props_count = sum(1 for n in nodes if n.get("description") or n.get("formula"))
+        class_count = sum(1 for n in nodes if n.get("category") and n.get("category") != "UNCLASSIFIED")
+        print(f"   [DEBUG-KG] Pag {page_no}: {len(nodes)} nodi estratti -> {class_count} categorizzati, {props_count} con proprietà.")
+
+    return nodes, edges
 
 
 def extract_pdf_text_by_page_pdfminer(file_path: str) -> list[str]:
@@ -3835,8 +3907,13 @@ def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
 
                     math_json = extract_formulas_vision(hq_bytes)
 
+
+
                     if math_json and math_json.get("formulas"):
                         sem_math = build_formula_semantic_chunk(page_no, math_json)
+                    
+                        # ---> AGGIUNGI QUESTA RIGA <---
+                        sem_math = f"Doc: {filename} | Pagina: {page_no}\n{sem_math}"
                         
                         final_chunks.append({
                             "text_raw": json.dumps(math_json, ensure_ascii=False),
@@ -4354,7 +4431,9 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
                         clean_nodes, clean_edges = _sanitize_graph(graph_data)
                         
                         # Canonicalizzazione
-                        final_edges = canonicalize_edges_to_verb_object(clean_edges)
+                        #final_edges = canonicalize_edges_to_verb_object(clean_edges)
+                        final_edges = clean_edges
+
                         
                         # Validazione Neo4j (essenziale: filtra nodi senza ID)
                         validated_nodes = [n for n in clean_nodes if isinstance(n, dict) and n.get("id")]
