@@ -271,7 +271,7 @@ def ensure_inbox_structure(inbox_dir: str):
 MIN_ENTITY_DENSITY = int(os.getenv("MIN_ENTITY_DENSITY", "1"))
 MIN_FIN_KEYWORDS = int(os.getenv("MIN_FIN_KEYWORDS", "1"))
 
-KG_TEXT_MAX_CHARS = int(os.getenv("KG_TEXT_MAX_CHARS", "2600"))   # chars sent to KG model per page
+KG_TEXT_MAX_CHARS = int(os.getenv("KG_TEXT_MAX_CHARS", "1500"))   # chars sent to KG model per page
 KG_MAX_TRIPLES = int(os.getenv("KG_MAX_TRIPLES", "50"))           # 10 soft cap (sanitize already caps)
 KG_TIMEOUT = int(os.getenv("KG_TIMEOUT", "600"))                   # seconds per KG task/page
 
@@ -2422,220 +2422,124 @@ def canonicalize_edges(edges: list[dict]) -> list[dict]:
 
     return out
 
-def _as_str(x) -> str:
-    if x is None:
-        return ""
-    if isinstance(x, str):
-        return x.strip()
-    return str(x).strip()
-
-
-def _as_str_list(x) -> list[str]:
-    if not x:
-        return []
-    if isinstance(x, list):
-        return [str(v).strip() for v in x if str(v).strip()]
-    if isinstance(x, str):
-        return [x.strip()] if x.strip() else []
-    return []
-
-
-def _normalize_graph_schema(js: Any) -> Optional[Dict[str, Any]]:
-    """
-    Normalizza output KG flat:
-    - nodi con description/formula/synonyms in props
-    - archi con evidence in props
-    - compatibile con Neo4j Entity generico
-    """
-    if not isinstance(js, dict):
-        if isinstance(js, list):
-            js = {"nodes": js, "edges": []}
-        else:
-            return None
+def _normalize_graph_schema(js):
+    """Versione Aggiornata: Preserva category e props per Neo4j e gestisce allucinazioni di tipo."""
+    if js is None: return None
+    if isinstance(js, list):
+        js = {"nodes": js, "edges": []}
+    if not isinstance(js, dict): return None
 
     g = dict(js)
-
+    # Uniforma chiavi dei nodi
+    raw_nodes = g.get("nodes") or g.get("entities") or g.get("concepts") or []
     nnodes = []
-    for n in (g.get("nodes") or g.get("entities") or []):
-        if not isinstance(n, dict):
+    for n in raw_nodes:
+        if not isinstance(n, dict): continue
+        x = dict(n)
+        
+        # Estrazione dell'ID
+        eid = x.get("id") or x.get("name") or x.get("label")
+        
+        # 🔥 FIX STRUTTURALE: Gestione universale dei tipi (Defensive Programming)
+        if isinstance(eid, list):
+            # Se crea una lista, unisce tutti gli elementi. 
+            # Es: ["Media", "Mobile"] -> "Media Mobile"
+            eid = " ".join(str(item) for item in eid if item).strip()
+        elif isinstance(eid, dict):
+            # Se allucina un dizionario, estrae i valori.
+            # Es: {"name": "Prezzo"} -> "Prezzo"
+            eid = " ".join(str(val) for val in eid.values() if val).strip()
+            
+        if not eid or str(eid).strip() == "":
             continue
-
-        nid = n.get("id") or n.get("name") or n.get("label")
-        if not nid:
-            continue
-
-        category = _as_str(n.get("category") or n.get("type") or "UNCLASSIFIED").upper()
-
-        props = {}
-        props["description"] = _as_str(n.get("description"))
-        props["formula"] = _as_str(n.get("formula"))
-        props["synonyms"] = _as_str_list(n.get("synonyms"))
-
-        # preserva eventuali props già presenti
-        raw_props = n.get("props") or n.get("properties") or {}
-        if isinstance(raw_props, dict):
-            for k, v in raw_props.items():
-                if k in props:
-                    continue
-                if isinstance(v, (str, int, float, bool)):
-                    props[k[:60]] = v
-                elif isinstance(v, list) and all(isinstance(x, (str, int, float, bool)) for x in v):
-                    props[k[:60]] = v
-
-        node_out = {
-            "id": _as_str(nid),
-            "category": category,
-            "props": props
-        }
-
-        nnodes.append(node_out)
-
+            
+        x["id"] = normalize_entity_id(str(eid))
+        
+        # FIX: Salviamo esplicitamente la category
+        x["category"] = str(x.get("category") or x.get("type") or x.get("label") or "UNCLASSIFIED").upper()
+        
+        # FIX: Assicura che le 'props' siano un dict
+        props = x.get("props") or x.get("properties") or {}
+        if not isinstance(props, dict): props = {}
+        for k, v in x.items():
+            # Aggiunto "name" all'esclusione
+            if k not in ("id", "name", "label", "type", "properties", "category", "props"):
+                props[k] = v
+        x["props"] = _flat_props(props)
+        nnodes.append(x)
+    
     g["nodes"] = nnodes
-
+    
+    # Uniforma chiavi degli archi
+    raw_edges = g.get("edges") or g.get("relationships") or g.get("relations") or []
     eedges = []
-    for e in (g.get("edges") or g.get("relationships") or []):
-        if not isinstance(e, dict):
-            continue
-
-        src = e.get("source") or e.get("from")
-        tgt = e.get("target") or e.get("to")
-        rel = e.get("relation") or e.get("type") or "RELATED_TO"
-
-        if not src or not tgt:
-            continue
-
-        props = {}
-
-        evidence = e.get("evidence")
-        if evidence:
-            props["evidence"] = _as_str(evidence)
-
-        raw_props = e.get("props") or e.get("properties") or {}
-        if isinstance(raw_props, dict):
-            for k, v in raw_props.items():
-                if isinstance(v, (str, int, float, bool)):
-                    props[k[:60]] = v
-                elif isinstance(v, list) and all(isinstance(x, (str, int, float, bool)) for x in v):
-                    props[k[:60]] = v
-
-        edge_out = {
-            "source": _as_str(src),
-            "target": _as_str(tgt),
-            "relation": _as_str(rel).upper(),
-            "props": props
-        }
-
-        eedges.append(edge_out)
-
+    for e in raw_edges:
+        if not isinstance(e, dict): continue
+        s = e.get("source") or e.get("from") or e.get("src")
+        t = e.get("target") or e.get("to") or e.get("dst")
+        r = e.get("relation") or e.get("type") or "RELATED_TO"
+        if s and t:
+            eedges.append({
+                "source": normalize_entity_id(str(s)),
+                "target": normalize_entity_id(str(t)),
+                "relation": _clean_rel(r),
+                "props": _flat_props(e.get("props") or e.get("properties") or {}) # FIX per archi
+            })
     g["edges"] = eedges
     return g
 
 
-def _sanitize_graph(graph_data: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Passa i dati a Neo4j con controlli antiproiettile contro le allucinazioni dell'LLM."""
-    if not isinstance(graph_data, dict): return [], []
-    
-    nodes = []
-    seen = set()
-    for n in graph_data.get("nodes", []):
-        # 🔥 FIX ANTI-CRASH: Se l'LLM allucina una stringa invece di un oggetto, saltala
-        if not isinstance(n, dict): continue  
-        
-        nid = n.get("id")
-        if not nid or str(nid) in seen: continue
-        seen.add(str(nid))
-        nodes.append({
-            "id": str(nid)[:200],
-            "category": str(n.get("category", "UNCLASSIFIED"))[:50],
-            "props": n.get("props", {})
-        })
-        
-    edges = []
-    for e in graph_data.get("edges", []):
-        # 🔥 FIX ANTI-CRASH: Protezione per gli archi
-        if not isinstance(e, dict): continue  
-        
-        src = e.get("source")
-        tgt = e.get("target")
-        if not src or not tgt: continue
-        edges.append({
-            "source": str(src)[:200],
-            "target": str(tgt)[:200],
-            "relation": str(e.get("relation", "RELATED_TO"))[:50],
-            "props": e.get("props", {})
-        })
-        
+def _sanitize_graph(graph: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Versione Aggiornata: Invia category e props corrette al Database, con alias mapping sicuro."""
+    if not isinstance(graph, dict):
+        return [], []
+
+    nodes: List[Dict[str, Any]] = []
+    edges: List[Dict[str, Any]] = []
+    seen_nodes = set()
+
+    # --- NODES (Mapping Alias & Validazione) ---
+    raw_nodes = graph.get("nodes") or graph.get("entities") or graph.get("concepts") or []
+    if isinstance(raw_nodes, list):
+        for n in raw_nodes:
+            if not isinstance(n, dict): continue
+
+            nid = n.get("id") or n.get("name") or n.get("label")
+            if not nid or str(nid) in seen_nodes: continue
+            seen_nodes.add(str(nid))
+
+            # FIX: Inserisce le chiavi che Cypher aspetta, troncando a limiti sicuri
+            nodes.append({
+                "id": str(nid)[:200],
+                "category": str(n.get("category") or n.get("type") or "UNCLASSIFIED")[:50],
+                "props": n.get("props") or n.get("properties") or {}
+            })
+
+    # --- EDGES (Mapping Alias & Validazione) ---
+    raw_edges = graph.get("edges") or graph.get("relationships") or graph.get("relations") or graph.get("links") or []
+    if isinstance(raw_edges, list):
+        for e in raw_edges:
+            if not isinstance(e, dict): continue
+            
+            src = e.get("source") or e.get("from") or e.get("src")
+            tgt = e.get("target") or e.get("to") or e.get("dst")
+            rel = e.get("relation") or e.get("type") or e.get("predicate") or e.get("rel") or "RELATED_TO"
+            props = e.get("props") or e.get("properties") or e.get("metadata") or e.get("attributes") or {}
+
+            if not src or not tgt: continue
+            if not isinstance(props, dict): props = {}
+
+            # FIX: Assicurati che la chiave si chiami "props" e non "properties"
+            edges.append({
+                "source": str(src)[:200],
+                "target": str(tgt)[:200],
+                "relation": str(rel)[:50],
+                "props": props
+            })
+
+    # --- FIX CRITICO: Slicing sicuro ---
+    # Limita l'estrazione a 80 nodi e 100 archi per evitare sovraccarichi massivi
     return nodes[:80], edges[:100]
-
-def enrich_formula_nodes_and_edges(nodes: list[dict], edges: list[dict]) -> tuple[list[dict], list[dict]]:
-    """
-    Se un nodo concettuale contiene props.formula, crea anche:
-    - un nodo FORMULA dedicato
-    - un edge concetto -> formula con HAS_FORMULA
-
-    Esempio:
-    Media Mobile Esponenziale
-      props.formula = "XMA_t = ..."
-    diventa anche:
-      (:Entity {id:"Formula::Media Mobile Esponenziale"})
-      (:Entity)-[:HAS_FORMULA]->(:Entity)
-    """
-    if not nodes:
-        return nodes, edges
-
-    existing_ids = {n.get("id") for n in nodes if isinstance(n, dict)}
-    existing_edges = {
-        (e.get("source"), e.get("target"), e.get("relation"))
-        for e in edges
-        if isinstance(e, dict)
-    }
-
-    new_nodes = []
-    new_edges = []
-
-    for n in nodes:
-        if not isinstance(n, dict):
-            continue
-
-        nid = n.get("id")
-        cat = str(n.get("category", "") or "").upper()
-        props = n.get("props") or {}
-        formula = str(props.get("formula", "") or "").strip()
-
-        if not nid or not formula:
-            continue
-
-        # Se il nodo è già FORMULA, non duplicare.
-        if cat == "FORMULA":
-            continue
-
-        fid = f"Formula::{nid}"
-
-        if fid not in existing_ids:
-            new_nodes.append({
-                "id": fid,
-                "category": "FORMULA",
-                "props": {
-                    "description": f"Formula associata a {nid}",
-                    "formula": formula,
-                    "synonyms": []
-                }
-            })
-            existing_ids.add(fid)
-
-        edge_key = (nid, fid, "HAS_FORMULA")
-        if edge_key not in existing_edges:
-            new_edges.append({
-                "source": nid,
-                "target": fid,
-                "relation": "HAS_FORMULA",
-                "props": {
-                    "evidence": "Formula estratta dal testo e associata al concetto."
-                }
-            })
-            existing_edges.add(edge_key)
-
-    return nodes + new_nodes, edges + new_edges
 
 
 def flush_neo4j_rows_batch(rows: List[Dict[str, Any]]):
@@ -3324,235 +3228,60 @@ def llm_extract_kg(filename: str, page_no, text: str, model_name: str):
 
     # UNICO PROMPT: FLAT SCHEMA
     FLAT_KG_PROMPT = """You are an Expert Financial Knowledge Graph Extractor.
-
-CRITICAL JSON SCHEMA REQUIREMENT:
-Every node object MUST contain EXACTLY these 5 keys. Missing keys will crash the system.
-1. "id": Entity name, concept, formula name, or mathematical symbol (e.g., "Volatility", "Formula EMA", "P_t", or "\\\\beta").
-2. "category": Chosen from the Taxonomy.
-3. "description": Brief definition EXTRACTED FROM THE TEXT (keep the original language of the text). NEVER copy the placeholder examples.
-4. "formula": The exact, FULL LaTeX equation. You MUST include the left-hand side (e.g., "XMA_t = ...", NOT just the right side). If no math applies, use an empty string "".
-5. "synonyms": Array of alternative names, acronyms, symbols, or translations explicitly present in the input text.
+Extract entities and highly dense relationships from the text.
 
 TAXONOMY (Choose ONE for 'category'):
-- ORGANIZATION
-- PERSON
-- FINANCIAL_INSTRUMENT
-- METRIC_OR_INDICATOR (e.g., Price, Moving Average, MACD)
-- ALGORITHM (e.g., MACD strategy, VECM, Random Forest)
-- FORMULA (e.g., Formula EMA, Cointegration Equation)
-- VARIABLE (e.g., Alpha, Time, Weight, P_t, beta)
-- SIGNAL (e.g., Buy Signal, Sell Signal)
-- EVENT
-- REGULATION
-- CONCEPT (e.g., Trend, Volatility, Strategy, Cointegration)
+- ORGANIZATION (e.g., Company, Central Bank, Institution)
+- PERSON (e.g., CEO, Analyst, Politician)
+- FINANCIAL_INSTRUMENT (e.g., Stock, Bond, Derivative)
+- METRIC_OR_INDICATOR (e.g., Price, Inflation, GDP, Moving Average, RSI)
+- EVENT (e.g., Merger, Default, Market Crash)
+- REGULATION (e.g., Law, Compliance standard, Contract)
+- CONCEPT (e.g., Risk, Strategy, Trend, Volatility)
+- LOCATION (e.g., Country, Market Region)
 
-RELATION VOCABULARY (Use ONLY these EXACT UPPERCASE relation types):
+RELATION VOCABULARY (Use these EXACT UPPERCASE verbs whenever possible):
+- HIERARCHY: IS_A, PART_OF, BELONGS_TO
+- MARKET DYNAMICS: CORRELATES_WITH, OUTPERFORMS, UNDERPERFORMS, DRIVES, REVERSES
+- RISK & STRATEGY: HEDGES_AGAINST, MITIGATES_RISK_OF, EXPOSED_TO, DIVERSIFIES
+- ANALYSIS: CALCULATES, MEASURES, FORECASTS, BENCHMARKS_AGAINST, INDICATES
+- CORPORATE & LEGAL: ISSUES, ACQUIRES, REGULATES, PENALIZES
 
-- HIERARCHY / STRUCTURE:
-  IS_A, PART_OF, HAS_COMPONENT, HAS_PROPERTY
+PROPERTIES DYNAMICS:
+- 'description': Brief definition in Italian (max 15 words). MUST NOT BE EMPTY.
+- 'formula': LaTeX formula (ONLY for METRIC_OR_INDICATOR/CONCEPT, else leave empty).
+- 'synonyms': Array of alternative names, acronyms, or English translations. USE YOUR DOMAIN KNOWLEDGE to populate this. DO NOT LEAVE EMPTY.
 
-- DEFINITION / SEMANTIC:
-  DEFINES, DESCRIBES, EQUIVALENT_TO, CONTRASTS_WITH
+GRAPH DENSITY RULES (CRITICAL):
+1. EXHAUSTIVE CROSS-LINKING: You MUST extract complex cross-linked webs (A->B, B->C, A->C). Do not just extract linear pairs.
+2. MULTIPLE EDGES PER NODE: Strive to explicitly connect each entity to at least 2 or 3 other entities.
+3. CRITICAL EDGE GENERATION: The 'edges' array MUST be heavily populated. The number of edges MUST be equal to or greater than the number of nodes. NO ISOLATED NODES.
+4. EVIDENCE-BASED: Provide an 'evidence' property for every edge explaining WHY they are connected.
 
-- COMPUTATION & MATH:
-  HAS_FORMULA, HAS_VARIABLE, CALCULATED_AS, CALCULATED_USING, PARAMETERIZED_BY, DERIVED_FROM
-
-- TIME SERIES / STATISTICS:
-  SMOOTHS, WEIGHTS, MEASURES, CAPTURES, COINTEGRATED_WITH, STATIONARY_COMBINATION_OF, INTEGRATED_OF_ORDER
-
-- TRADING LOGIC:
-  GENERATES, TRIGGERS, CROSSES_ABOVE, CROSSES_BELOW, INDICATES, REVERSES
-
-- DEPENDENCY / REQUIREMENT:
-  DEPENDS_ON, REQUIRES, INFLUENCES
-
-GRAPH EXTRACTION RULES:
-1. FULL EQUATIONS:
-   Extract the ENTIRE mathematical equation including the equality sign.
-   Good: "XMA_t = (1 - \\\\alpha)XMA_{t-1} + \\\\alpha P_t"
-   Bad: "(1 - \\\\alpha)XMA_{t-1} + \\\\alpha P_t"
-
-2. FORMULA NODES:
-   If a full equation is present, create a FORMULA node.
-   The FORMULA node must have:
-   - category = "FORMULA"
-   - formula = the full LaTeX equation
-   - id = a short canonical name, e.g. "Formula EMA", "Formula Cointegrazione"
-
-3. LINK VARIABLES:
-   Extract variables as separate VARIABLE nodes when they are explicitly part of a formula.
-   Connect the FORMULA node to its variables using HAS_VARIABLE.
-   Connect the main concept, indicator, or algorithm to the FORMULA node using HAS_FORMULA.
-
-4. Canonical node IDs:
-   Use stable human-readable IDs.
-   Prefer the canonical name used in the input text.
-   Prefer Italian canonical names if the text is Italian.
-   Examples:
-   - "Media Mobile Esponenziale"
-   - "Formula EMA"
-   - "\\\\alpha"
-   - "MACD"
-   - "Segnale di acquisto"
-   Avoid duplicate nodes such as "EMA" and "Exponential Moving Average" unless the text explicitly presents one as an alternative name of the other.
-
-5. Synonyms:
-   Fill "synonyms" ONLY with alternative names, acronyms, mathematical symbols, or translations explicitly present in the input text.
-   Do NOT use external knowledge.
-   Do NOT infer common acronyms unless the text states them.
-   If no synonym is explicitly present, use [].
-
-   Extract synonyms when the text uses patterns such as:
-   - "Full Name (ACRONYM)"
-   - "ACRONYM (Full Name)"
-   - "also known as"
-   - "detto anche"
-   - "chiamato"
-   - "indicato come"
-   - "abbreviato in"
-
-   Example 1:
-   If the text says "Moving Average Convergence Divergence indicator (MACD)", then:
-   {
-     "id": "Moving Average Convergence Divergence",
-     "category": "METRIC_OR_INDICATOR",
-     "description": "Indicatore citato nel testo.",
-     "formula": "",
-     "synonyms": ["MACD"]
-   }
-
-   Example 2:
-   If the text says "exponential moving average", but does NOT explicitly say "EMA", then:
-   {
-     "id": "exponential moving average",
-     "category": "METRIC_OR_INDICATOR",
-     "description": "Media mobile citata nel testo.",
-     "formula": "",
-     "synonyms": []
-   }
-
-6. Semantic edge density:
-   Build a semantically useful graph, not a complete graph.
-   Prefer 15-30 strong, text-supported edges when the text contains enough concepts.
-   Every edge MUST be supported by evidence.
-   Do NOT connect two nodes only because they appear near each other.
-   Do NOT use vague relations when a specific relation is available.
-
-   Relation selection guide:
-
-   A) Use HAS_FORMULA only for:
-      concept/indicator/algorithm -> formula node.
-
-   B) Use HAS_VARIABLE only for:
-      formula node -> mathematical variable or parameter.
-
-   C) Use PARAMETERIZED_BY only for:
-      formula/model/indicator -> explicit parameter that controls behavior.
-
-   D) Use CALCULATED_USING when:
-      an indicator, metric, or formula is computed using another quantity, indicator, or variable.
-
-   E) Use CALCULATED_AS when:
-      the text states an exact definition such as "X is calculated as Y".
-
-   F) Use SMOOTHS when:
-      a moving average or filter smooths a price series, observation series, or time series.
-
-   G) Use WEIGHTS when:
-      a weighted average, EMA, or similar method assigns different weights to observations.
-
-   H) Use MEASURES when:
-      an indicator measures trend, volatility, momentum, risk, distance, spread, or performance.
-
-   I) Use CAPTURES when:
-      an indicator/model captures a phenomenon such as trend, momentum, mean reversion, or long-run equilibrium.
-
-   J) Use GENERATES when:
-      an indicator, rule, algorithm, or model generates a signal.
-
-   K) Use TRIGGERS when:
-      an event or condition activates a signal, entry, exit, or decision.
-
-   L) Use CROSSES_ABOVE / CROSSES_BELOW when:
-      the text describes a crossover between two lines, indicators, thresholds, or moving averages.
-
-   M) Use INDICATES when:
-      a signal, sign, crossover, or indicator is interpreted as evidence of a market condition.
-
-   N) Use REQUIRES when:
-      a method, model, or condition requires an assumption, input, or prerequisite.
-
-   O) Use DEPENDS_ON when:
-      a value, model, signal, or calculation depends on another variable, parameter, or condition.
-
-   P) Use COINTEGRATED_WITH, STATIONARY_COMBINATION_OF, INTEGRATED_OF_ORDER only for explicit cointegration / stationarity statements.
-
-   Important:
-   If the text contains formulas and explanatory prose, do NOT stop at HAS_FORMULA and HAS_VARIABLE.
-   Also extract semantic relations between the formula's parent concept and the economic/statistical meaning described in the text.
-
-7. Minimum semantic relations:
-   If the text contains at least 5 meaningful nodes, extract at least 8 non-PRESENT_IN semantic edges when supported by the text.
-   Prefer these high-value relations:
-   HAS_FORMULA, CALCULATED_USING, PARAMETERIZED_BY, SMOOTHS, WEIGHTS, MEASURES, CAPTURES, GENERATES, TRIGGERS, INDICATES, REQUIRES, DEPENDS_ON.
-   Do not count HAS_VARIABLE edges as sufficient semantic coverage.
-
-8. No isolated important nodes:
-   Important nodes should have at least one edge.
-   If a minor variable cannot be connected with evidence, omit it.
-
-9. Evidence:
-   Provide an 'evidence' key for every edge explaining the connection.
-   Keep the original language of the text.
-   Keep evidence short.
-
-10. Language:
-   Keep descriptions and evidence in the original language of the input text.
-   Use relation names in English uppercase exactly as listed.
-
-Return ONLY valid JSON. Example of EXACT expected format:
-
+Return ONLY valid JSON using this exact flat schema:
 {
   "nodes": [
     {
-      "id": "Media Mobile Esponenziale",
+      "id": "Specific Concept Name",
       "category": "METRIC_OR_INDICATOR",
-      "description": "Media mobile ponderata che attribuisce peso maggiore alle osservazioni recenti.",
-      "formula": "",
-      "synonyms": []
-    },
-    {
-      "id": "Formula EMA",
-      "category": "FORMULA",
-      "description": "Formula ricorsiva della media mobile esponenziale.",
-      "formula": "XMA_t = (1 - \\\\alpha)XMA_{t-1} + \\\\alpha P_t",
-      "synonyms": []
-    },
-    {
-      "id": "\\\\alpha",
-      "category": "VARIABLE",
-      "description": "Parametro che regola il peso dell'osservazione più recente.",
-      "formula": "",
-      "synonyms": []
+      "props": {
+        "description": "...",
+        "formula": "...",
+        "synonyms": ["Synonym1", "Acronym"]
+      }
     }
   ],
   "edges": [
     {
-      "source": "Media Mobile Esponenziale",
-      "target": "Formula EMA",
-      "relation": "HAS_FORMULA",
-      "evidence": "La exponential moving average è definita in maniera ricorsiva."
-    },
-    {
-      "source": "Formula EMA",
-      "target": "\\\\alpha",
-      "relation": "HAS_VARIABLE",
-      "evidence": "La formula contiene il parametro α."
+      "source": "Entity 1", 
+      "target": "Entity 2", 
+      "relation": "CORRELATES_WITH",
+      "props": { "evidence": "Short quote or reason from text" }
     }
   ]
 }
 """
-    
+
     try:
         # TENTATIVO 1: JSON MODE
         resp = chat(
@@ -3600,12 +3329,8 @@ Return ONLY valid JSON. Example of EXACT expected format:
             print(f"   ❌ [KG-ERR] Pag {page_no}: Fallimento totale ({e2})")
             return [], []
 
-    # Filtriamo a monte qualsiasi allucinazione (stringhe al posto di dizionari)
-    raw_nodes = js.get("nodes", js.get("entities", []))
-    raw_edges = js.get("edges", js.get("relationships", []))
-    
-    nodes = [n for n in raw_nodes if isinstance(n, dict)]
-    edges = [e for e in raw_edges if isinstance(e, dict)]
+    nodes = js.get("nodes", js.get("entities", []))
+    edges = js.get("edges", js.get("relationships", []))
 
     # DEBUG RADAR
     if nodes:
@@ -4520,264 +4245,6 @@ def process_virtual_md_chunks(content: str, asset_park: dict, filename: str, log
     return out_chunks
 
 
-
-def formula_kg_from_chunk(ch: dict) -> tuple[list[dict], list[dict]]:
-    """
-    Converte deterministicamente il JSON Vision delle formule in nodi KG.
-    Non dipende dal LLM KG.
-    """
-    if normalize_toon_type(ch) != "formula":
-        return [], []
-
-    raw = ch.get("text_raw") or ""
-    page_no = ch.get("page_no", 1)
-
-    try:
-        js = json.loads(raw) if isinstance(raw, str) else raw
-    except Exception:
-        js = safe_json_extract(raw)
-
-    if not isinstance(js, dict):
-        return [], []
-
-    formulas = js.get("formulas") or []
-    if not isinstance(formulas, list):
-        return [], []
-
-    nodes = []
-    edges = []
-    seen_ids = set()
-
-    for idx, f in enumerate(formulas):
-        if not isinstance(f, dict):
-            continue
-
-        desc = (
-            f.get("description_it")
-            or f.get("meaning_it")
-            or f.get("description")
-            or f"Formula {idx + 1}"
-        )
-
-        raw_latex = f.get("latex", "")
-        if isinstance(raw_latex, list):
-            latex = " ".join(str(x) for x in raw_latex)
-        elif isinstance(raw_latex, dict):
-            latex = json.dumps(raw_latex, ensure_ascii=False)
-        else:
-            latex = str(raw_latex or "")
-
-        latex = latex.strip()
-        if not latex:
-            continue
-
-        formula_hash = sha256_hex(latex.encode("utf-8"))[:10]
-        formula_id = f"Formula::P{page_no}::{formula_hash}"
-
-        if formula_id not in seen_ids:
-            nodes.append({
-                "id": formula_id,
-                "category": "FORMULA",
-                "props": {
-                    "description": str(desc),
-                    "formula": latex,
-                    "synonyms": [],
-                    "source": "vision_formula",
-                    "page_no": page_no
-                }
-            })
-            seen_ids.add(formula_id)
-
-        variables = f.get("variables") or []
-        if isinstance(variables, list):
-            for v in variables:
-                if isinstance(v, dict):
-                    v_name = str(v.get("name", "") or "").strip()
-                    v_meaning = str(v.get("meaning", "") or "").strip()
-                else:
-                    v_name = str(v or "").strip()
-                    v_meaning = ""
-
-                if not v_name:
-                    continue
-
-                var_id = v_name
-
-                if var_id not in seen_ids:
-                    nodes.append({
-                        "id": var_id,
-                        "category": "VARIABLE",
-                        "props": {
-                            "description": v_meaning,
-                            "formula": v_name,
-                            "synonyms": [],
-                            "source": "vision_formula",
-                            "page_no": page_no
-                        }
-                    })
-                    seen_ids.add(var_id)
-
-                edges.append({
-                    "source": formula_id,
-                    "target": var_id,
-                    "relation": "HAS_VARIABLE",
-                    "props": {
-                        "evidence": "Variabile estratta dal JSON Vision della formula.",
-                        "source": "vision_formula"
-                    }
-                })
-
-    return nodes, edges
-
-
-
-def ensure_entity_props_defaults(nodes: list[dict]) -> list[dict]:
-    """
-    Garantisce che ogni nodo Entity abbia sempre:
-    - description
-    - formula
-    - synonyms
-
-    Non inventa sinonimi.
-    """
-    out = []
-
-    for n in nodes or []:
-        if not isinstance(n, dict):
-            continue
-
-        nn = dict(n)
-        props = dict(nn.get("props") or {})
-
-        props.setdefault("description", "")
-        props.setdefault("formula", "")
-
-        syn = props.get("synonyms", [])
-        if syn is None:
-            syn = []
-        elif isinstance(syn, str):
-            syn = [syn] if syn.strip() else []
-        elif not isinstance(syn, list):
-            syn = []
-
-        props["synonyms"] = [str(x).strip() for x in syn if str(x).strip()]
-
-        nn["props"] = props
-        out.append(nn)
-
-    return out
-
-ACRONYM_PAIR_PATTERNS = [
-    # Full Name (ABC)
-    re.compile(
-        r"\b([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú0-9\s\-/]{4,90})\s*\(([A-Z][A-Z0-9]{1,15})\)"
-    ),
-
-    # ABC (Full Name)
-    re.compile(
-        r"\b([A-Z][A-Z0-9]{1,15})\s*\(([A-ZÀ-Úa-zà-ú][A-ZÀ-Úa-zà-ú0-9\s\-/]{4,90})\)"
-    ),
-]
-
-
-def extract_local_synonym_pairs(text: str) -> dict[str, list[str]]:
-    """
-    Estrae sinonimi SOLO se appaiono esplicitamente nel testo.
-    Non usa dizionari esterni.
-    Esempi:
-    - Moving Average Convergence Divergence (MACD)
-    - MACD (Moving Average Convergence Divergence)
-    """
-    pairs: dict[str, list[str]] = {}
-
-    if not text:
-        return pairs
-
-    clean = re.sub(r"\s+", " ", text).strip()
-
-    for pat in ACRONYM_PAIR_PATTERNS:
-        for a, b in pat.findall(clean):
-            a = re.sub(r"\s+", " ", a).strip(" .,:;")
-            b = re.sub(r"\s+", " ", b).strip(" .,:;")
-
-            if not a or not b:
-                continue
-
-            a_is_acronym = bool(re.fullmatch(r"[A-Z][A-Z0-9]{1,15}", a))
-            b_is_acronym = bool(re.fullmatch(r"[A-Z][A-Z0-9]{1,15}", b))
-
-            if a_is_acronym and not b_is_acronym:
-                canonical, synonym = b, a
-            elif b_is_acronym and not a_is_acronym:
-                canonical, synonym = a, b
-            else:
-                continue
-
-            # evita canonical troppo rumorosi
-            canonical = canonical.strip()
-            synonym = synonym.strip()
-
-            if len(canonical) < 4 or len(synonym) < 2:
-                continue
-
-            pairs.setdefault(canonical, [])
-            if synonym not in pairs[canonical]:
-                pairs[canonical].append(synonym)
-
-    return pairs
-
-
-def enrich_synonyms_from_local_text(nodes: list[dict], text: str) -> list[dict]:
-    """
-    Aggiunge sinonimi document-grounded ai nodi.
-    Non inventa sinonimi: usa solo pattern presenti nel testo.
-    """
-    if not nodes or not text:
-        return nodes
-
-    local_pairs = extract_local_synonym_pairs(text)
-    if not local_pairs:
-        return nodes
-
-    out = []
-
-    for n in nodes:
-        if not isinstance(n, dict):
-            continue
-
-        nn = dict(n)
-        nid = str(nn.get("id", "") or "").strip()
-        props = dict(nn.get("props") or {})
-
-        syn = props.get("synonyms", [])
-        if syn is None:
-            syn = []
-        elif isinstance(syn, str):
-            syn = [syn] if syn.strip() else []
-        elif not isinstance(syn, list):
-            syn = []
-
-        # Match sul nome canonico
-        for canonical, synonyms in local_pairs.items():
-            if nid.lower() == canonical.lower():
-                for s in synonyms:
-                    if s not in syn:
-                        syn.append(s)
-
-            # Match inverso: se il nodo è l'acronimo, aggiungi il full name come synonym
-            for s in synonyms:
-                if nid.lower() == s.lower() and canonical not in syn:
-                    syn.append(canonical)
-
-        props["synonyms"] = [str(x).strip() for x in syn if str(x).strip()]
-        nn["props"] = props
-        out.append(nn)
-
-    return out
-
-
-
-
 # =========================
 # FILE DISPATCH (PDF only here)
 # =========================
@@ -4936,9 +4403,9 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
                         # Sanificazione con slicing sicuro
                         # La funzione _sanitize_graph ora deve gestire liste vuote internamente
                         clean_nodes, clean_edges = _sanitize_graph(graph_data)
-
-                        clean_nodes, clean_edges = enrich_formula_nodes_and_edges(clean_nodes, clean_edges)
-
+                        
+                        # Canonicalizzazione
+                        #final_edges = canonicalize_edges_to_verb_object(clean_edges)
                         final_edges = clean_edges
 
                         
@@ -4987,21 +4454,6 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
 
             # Neo4j Rows (Con tutte le proprietà corrette)
             k_nodes, k_edges = batch_kg_results.get(g_idx, ([], []))
-
-            # FIX: aggiunge sempre le formule Vision come nodi FORMULA deterministici
-            formula_nodes, formula_edges = formula_kg_from_chunk(ch)
-
-            k_nodes = list(k_nodes or []) + formula_nodes
-            k_edges = list(k_edges or []) + formula_edges
-
-      
-            # FIX: garantisce proprietà standard su tutte le Entity
-            k_nodes = ensure_entity_props_defaults(k_nodes)
-
-            # FIX: arricchisce synonyms SOLO da pattern espliciti nel testo locale
-            k_nodes = enrich_synonyms_from_local_text(k_nodes, ch.get("text_sem", ""))
-            
-
             neo4j_rows.append({
                 "doc_id": doc_id,
                 "filename": filename,
@@ -5017,7 +4469,6 @@ def process_single_file(file_path: str, source_type: str, doc_meta: dict):
                 "text_sem": ch.get("text_sem", ""),
                 "section_hint": ch.get("section_hint", "")
             })
-            
             total_chunks += 1
 
         # 4. Flush "intelligente" (meno roundtrip, stessa modalità di scrittura)
