@@ -49,8 +49,6 @@ import subprocess
 import requests
 from threading import Lock
 import gc
-import queue
-import threading
 
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -61,7 +59,7 @@ import shutil # Aggiungi questo import in cima al file
 import fitz  # PyMuPDF
 import psycopg2
 from psycopg2.extras import Json, execute_values
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import SimpleConnectionPool
 from psycopg2 import errors as pg_errors
 
 from sentence_transformers import SentenceTransformer
@@ -714,7 +712,7 @@ PG_DB = os.getenv("PG_DB", "ai_ingestion")
 PG_USER = os.getenv("PG_USER", "admin")
 PG_PASS = os.getenv("PG_PASS", "admin_password")
 PG_MIN_CONN = int(os.getenv("PG_MIN_CONN", "1"))
-PG_MAX_CONN = int(os.getenv("PG_MAX_CONN", "8"))
+PG_MAX_CONN = int(os.getenv("PG_MAX_CONN", "5"))
 
 # Neo4j
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://127.0.0.1:7687")
@@ -787,7 +785,7 @@ if NEO4J_ENABLED:
         print(f"⚠️ Neo4j disabled (driver init failed): {e}")
         NEO4J_ENABLED = False
 
-pg_pool = ThreadedConnectionPool(
+pg_pool = SimpleConnectionPool(
     PG_MIN_CONN, PG_MAX_CONN,
     host=PG_HOST, port=PG_PORT, dbname=PG_DB,
     user=PG_USER, password=PG_PASS
@@ -4185,17 +4183,11 @@ def extract_file_chunks(file_path: str, log_id: int) -> List[Dict[str, Any]]:
 
     except Exception as e:
         print(f"   ❌ Errore critico file {filename}: {e}")
-        
     finally:
-        if doc:
-            doc.close()
+        if doc: doc.close()
 
-        # In producer/consumer mode evitiamo unload concorrenti mentre il consumer usa Ollama.
-        if (
-            PDF_VISION_ENABLED
-            and VISION_MODEL_NAME
-            and os.getenv("PRODUCER_CONSUMER_MODE", "0") != "1"
-        ):
+        # ✅ Unload una sola volta a fine documento
+        if PDF_VISION_ENABLED and VISION_MODEL_NAME:
             force_unload_ollama(VISION_MODEL_NAME)
 
     return final_chunks
@@ -4789,7 +4781,7 @@ def enrich_synonyms_from_local_text(nodes: list[dict], text: str) -> list[dict]:
 # =========================
 # FILE DISPATCH (PDF only here)
 # =========================
-def process_ai_and_db(file_path: str, source_type: str, doc_meta: dict, chunks: list, log_id: int):
+def process_single_file(file_path: str, source_type: str, doc_meta: dict):
     """
     Pipeline v2.5 - Optimized for Gemma 2:9b & P5000 (Final Clean)
     Rimuove log doppi e ottimizza la visualizzazione della console.
@@ -4805,15 +4797,32 @@ def process_ai_and_db(file_path: str, source_type: str, doc_meta: dict, chunks: 
     
     print(f"   ⚙️ Engine Start: {filename} | tier={tier} | Brain={LLM_MODEL_NAME}")
 
+    log_id = pg_start_log(filename, source_type)
     doc_id = sha256_file(file_path)[:32]
 
     global embedder, qdrant_client
-
+    
     # Init Lazy dei client
     embedder = get_embedder()
     qdrant_client = get_qdrant_client()
     ensure_qdrant_collection()
 
+    # 🔥 Warmup embeddings (singolo, per evitare il doppio log)
+    try:
+        # Check se è già caldo (opzionale, ma male non fa)
+        pass 
+    except Exception:
+        pass
+
+    # 1. Estrazione Chunks (Vision AI avviene qui per i PDF)
+    # Nota: Qui potrebbe esserci una pausa lunga mentre Ministral legge le pagine
+    if file_path.lower().endswith(".md"):
+            print(f"   📝 Detected Markdown: {filename}")
+            chunks = extract_markdown_chunks(file_path, log_id)
+    else:
+        # Default assume PDF
+        chunks = extract_file_chunks(file_path, log_id)
+    
     if not chunks:
         pg_close_log(log_id, "FAILED", 0, _ms(t0), "No chunks extracted")
         try:
@@ -4821,6 +4830,7 @@ def process_ai_and_db(file_path: str, source_type: str, doc_meta: dict, chunks: 
         except Exception:
             pass
         return
+
     
     # 2. Iniezione metadati e normalizzazione tipo
     for idx, ch in enumerate(chunks):
@@ -5054,174 +5064,66 @@ def process_ai_and_db(file_path: str, source_type: str, doc_meta: dict, chunks: 
 
 def main():
     """
-    Producer/Consumer:
-    - Producer: estrae chunk da PDF/MD
-    - Consumer: fa embeddings, KG, Qdrant, Postgres, Neo4j
+    Punto di ingresso principale dell'Ingestion Engine.
+    Configura l'ambiente, ottimizza Ollama e processa i file supportati.
     """
-    total_t0 = time.time()
-    os.environ["PRODUCER_CONSUMER_MODE"] = "1"
-
-    # 1. Preparazione cartelle
+    # 1. Preparazione delle cartelle di lavoro
     os.makedirs(INBOX_DIR, exist_ok=True)
-    os.makedirs(PROCESSED_DIR, exist_ok=True)
-    os.makedirs(FAILED_DIR, exist_ok=True)
     ensure_inbox_structure(INBOX_DIR)
-
-    # 2. Reset Ollama
-    if not force_restart_ollama(num_parallel="1"):
+  
+    # 2. Reset Totale OLLAMA (Turbo Mode per P5000)
+    # Riavvia il server con NUM_PARALLEL=1 per evitare OOM su GPU 16GB
+    # (Rimuovi "2" e metti "1" o lascia vuoto per usare il default)
+    if not force_restart_ollama(num_parallel="1"): 
         print("   ❌ Errore: Impossibile avviare Ollama in modalità ottimizzata.")
         print("   ⚠️ L'ingestion potrebbe fallire o risultare estremamente lenta.")
-
-    print("\n" + "=" * 60)
-    print("=== Ingestion Engine v2.5 (Producer/Consumer Edition) ===")
-    print("=" * 60 + "\n")
-
+    
+    print("\n" + "="*60)
+    print("=== Ingestion Engine v2.4 (FAST + Markdown Support + Value Hunter) ===")
+    print("="*60 + "\n")
+    
+    # 3. Definizione estensioni supportate (Upgrade Markdown)
     supported = {".pdf", ".md"}
 
-    # 3. Scansione input
+    # 4. Scansione ricorsiva della cartella INBOX
     input_files = []
     for root, _, files in os.walk(INBOX_DIR):
         for fname in files:
+            # Salta i file di metadati sidecar
             if fname.lower().endswith(".meta.json"):
                 continue
 
             ext = os.path.splitext(fname)[1].lower()
             if ext in supported:
+                # Memorizza la radice per il dispatching corretto del Tier
                 input_files.append((root, os.path.join(root, fname)))
 
+    # 5. Verifica se ci sono file da processare
     if not input_files:
         print("   ✅ INBOX vuota: nessuna operazione necessaria.")
         return
 
-    print(f"   📂 Trovati {len(input_files)} file. Inizio sequenza PRODUCER/CONSUMER...")
+    print(f"   📂 Trovati {len(input_files)} file da processare. Inizio sequenza...")
 
-    # 4. Coda documenti
-    # Tienila bassa: i chunks PDF possono essere pesanti in RAM.
-    doc_queue = queue.Queue(maxsize=3)
-
-    # 1 consumer perché hai una sola GPU/Ollama seriale.
-    NUM_CONSUMERS = 1
-
-    def consumer_worker():
-        while True:
-            item = doc_queue.get()
-
-            try:
-                if item is None:
-                    return
-
-                file_path, source_type, doc_meta, chunks, log_id = item
-                filename = os.path.basename(file_path)
-
-                try:
-                    print(f"   🧠 Consumer Processing: {filename} | chunks={len(chunks)}")
-
-                    process_ai_and_db(
-                        file_path=file_path,
-                        source_type=source_type,
-                        doc_meta=doc_meta,
-                        chunks=chunks,
-                        log_id=log_id
-                    )
-
-                except Exception as e:
-                    print(f"   ❌ Errore Consumer su {filename}: {e}")
-
-                    try:
-                        pg_close_log(log_id, "FAILED", 0, 0, str(e)[:500])
-                    except Exception:
-                        pass
-
-                    try:
-                        if os.path.exists(file_path):
-                            shutil.move(file_path, os.path.join(FAILED_DIR, filename))
-                    except Exception as move_e:
-                        print(f"   ⚠️ Errore spostamento FAILED: {move_e}")
-
-            finally:
-                doc_queue.task_done()
-
-    # 5. Avvio consumer
-    consumers = []
-    for _ in range(NUM_CONSUMERS):
-        t = threading.Thread(target=consumer_worker, daemon=False)
-        t.start()
-        consumers.append(t)
-
-    # 6. Producer: estrae i documenti e li mette in coda
+    # 6. Ciclo di elaborazione principale
     for root_folder, file_path in input_files:
-        filename = os.path.basename(file_path)
-        log_id = None
-
         try:
+            # Determina Tier e Ontology in base alla cartella di origine
             doc_meta = dispatch_document(file_path, root_folder)
-            log_id = pg_start_log(filename, "document")
-
-            print(f"   ⚙️ Producer Extracting: {filename}...")
-
-            if file_path.lower().endswith(".md"):
-                chunks = extract_markdown_chunks(file_path, log_id)
-            else:
-                chunks = extract_file_chunks(file_path, log_id)
-
-            if not chunks:
-                pg_close_log(log_id, "FAILED", 0, 0, "No chunks extracted")
-
-                try:
-                    shutil.move(file_path, os.path.join(FAILED_DIR, filename))
-                except Exception as move_e:
-                    print(f"   ⚠️ Errore spostamento FAILED: {move_e}")
-
-                continue
-
-            # Se la coda è piena, il producer aspetta.
-            # Questo protegge la RAM.
-            doc_queue.put((file_path, "document", doc_meta, chunks, log_id))
-
+            
+            # Avvia l'ingestion multimodale (Text + Vision + KG)
+            process_single_file(file_path, "document", doc_meta)
+            
         except Exception as e:
-            print(f"   ❌ Errore Producer su {filename}: {e}")
+            print(f"   ❌ Errore critico durante il processing di {os.path.basename(file_path)}: {e}")
+            # Sposta il file in FAILED se non gestito da process_single_file
+            if os.path.exists(file_path):
+                shutil.move(file_path, os.path.join(FAILED_DIR, os.path.basename(file_path)))
 
-            if log_id is not None:
-                try:
-                    pg_close_log(log_id, "FAILED", 0, 0, str(e)[:500])
-                except Exception:
-                    pass
+    print("\n" + "="*60)
+    print("   ✨ Ingestion completata con successo.")
+    print("="*60)
 
-            try:
-                if os.path.exists(file_path):
-                    shutil.move(file_path, os.path.join(FAILED_DIR, filename))
-            except Exception as move_e:
-                print(f"   ⚠️ Errore spostamento FAILED: {move_e}")
 
-    # 7. Fine producer: invia poison pill
-    print("   ⏳ Lettura documenti completata. Attesa completamento AI/Database...")
-
-    for _ in range(NUM_CONSUMERS):
-        doc_queue.put(None)
-
-    # Aspetta anche i poison pill, perché consumer chiama task_done() nel finally
-    doc_queue.join()
-
-    for t in consumers:
-        t.join()
-
-    # 8. Cleanup finale Ollama
-    try:
-        if PDF_VISION_ENABLED and VISION_MODEL_NAME:
-            force_unload_ollama(VISION_MODEL_NAME)
-
-        if LLM_MODEL_NAME:
-            force_unload_ollama(LLM_MODEL_NAME)
-
-    except Exception:
-        pass
-
-    total_ms = _ms(total_t0)
-
-    print("\n" + "=" * 60)
-    print(f"   ✨ Ingestion Producer/Consumer completata con successo | total_time={total_ms/1000:.2f}s")
-    print("=" * 60)
-    
-    
 if __name__ == "__main__":
     main()
