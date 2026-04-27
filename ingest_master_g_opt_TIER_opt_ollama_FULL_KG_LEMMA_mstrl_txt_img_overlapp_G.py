@@ -2700,22 +2700,38 @@ def flush_neo4j_formulas_batch(rows: List[Dict[str, Any]]):
 # LLM / Vision
 # =========================
 def llm_chat(prompt: str, text: str, model: str, max_tokens: int = LLM_MAX_TOKENS) -> str:
-    for _ in range(LLM_RETRIES + 1):
+    """
+    Chiamata testuale a Ollama usata soprattutto per KG extraction.
+
+    IMPORTANTE:
+    usa OLLAMA_CALL_LOCK, non solo un lock Vision, perché in modalità
+    producer/consumer il producer può usare Vision mentre il consumer usa KG.
+    """
+    last_err = None
+
+    for attempt in range(LLM_RETRIES + 1):
         try:
-            '''resp = openai_client.chat.completions.create(
-                model=model,
-                messages=[{"role": "system", "content": prompt}, {"role": "user", "content": text}],
-                temperature=LLM_TEMPERATURE,
-                max_tokens=max_tokens
-            )'''
-            resp : ChatResponse = chat(
-                model=model,
-                messages=[{"role": "system", "content": prompt}, {"role": "user", "content": text}]
-            )
-            #return resp.choices[0].message.content or ""
-            return resp['message']['content'] or ""
-        except Exception:
-            time.sleep(0.35)
+            with OLLAMA_CALL_LOCK:
+                resp: ChatResponse = chat(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": text}
+                    ],
+                    options={
+                        "temperature": LLM_TEMPERATURE,
+                        "num_predict": int(max_tokens) if max_tokens is not None else LLM_MAX_TOKENS,
+                    }
+                )
+
+            return resp["message"]["content"] or ""
+
+        except Exception as e:
+            last_err = e
+            sleep_s = min(2.0, 0.35 * (attempt + 1))
+            time.sleep(sleep_s)
+
+    print(f"   ⚠️ llm_chat failed dopo retry | model={model} | err={last_err}")
     return ""
 
 
@@ -2729,9 +2745,15 @@ def llm_chat(prompt: str, text: str, model: str, max_tokens: int = LLM_MAX_TOKEN
 # ==============================================================================
 # Assicurati di avere l'import in alto: from ollama import chat, ChatResponse
 
-# ---- Vision call lock: serializza SOLO la chiamata LLM (evita deadlock su Ollama Vision) ----
-# ---- Vision call lock: evita deadlock Ollama Vision ----
-_VISION_CALL_LOCK = Lock()
+# ---- Ollama global lock ----
+# Serializza TUTTE le chiamate a Ollama:
+# - Vision-to-Markdown
+# - KG extraction
+# - eventuali chiamate chat/generate
+#
+# Serve perché con OLLAMA_NUM_PARALLEL=1 e GPU singola P5000,
+# producer e consumer non devono chiamare Ollama contemporaneamente.
+OLLAMA_CALL_LOCK = Lock()
 
 OLLAMA_API_GENERATE = os.getenv(
     "OLLAMA_API_GENERATE",
@@ -2788,9 +2810,10 @@ def llm_chat_multimodal(
     if response_format_json:
         payload["format"] = "json"
 
-    with _VISION_CALL_LOCK:
+    with OLLAMA_CALL_LOCK:
         last_err = None
-        for _ in range(OLLAMA_RETRIES + 1):
+
+        for attempt in range(OLLAMA_RETRIES + 1):
             try:
                 r = requests.post(
                     OLLAMA_API_GENERATE,
@@ -2798,11 +2821,14 @@ def llm_chat_multimodal(
                     timeout=OLLAMA_TIMEOUT_S,
                 )
                 r.raise_for_status()
+
                 data = r.json() or {}
                 return data.get("response", "") or ""
+
             except Exception as e:
                 last_err = e
-                time.sleep(0.5)
+                sleep_s = min(3.0, 0.75 * (attempt + 1))
+                time.sleep(sleep_s)
 
         print(f"   ⚠️ Vision generate failed (model={model}): {last_err}")
         return ""
@@ -5059,7 +5085,14 @@ def main():
     - Consumer: fa embeddings, KG, Qdrant, Postgres, Neo4j
     """
     total_t0 = time.time()
-    os.environ["PRODUCER_CONSUMER_MODE"] = "1"
+    
+    
+    #USE_PRODUCER_CONSUMER = os.getenv("USE_PRODUCER_CONSUMER", "1") == "1"
+    #os.environ["PRODUCER_CONSUMER_MODE"] = "1" if USE_PRODUCER_CONSUMER else "0"
+    
+    USE_PRODUCER_CONSUMER = os.getenv("USE_PRODUCER_CONSUMER", "1") == "1"
+
+
 
     # 1. Preparazione cartelle
     os.makedirs(INBOX_DIR, exist_ok=True)
@@ -5078,6 +5111,7 @@ def main():
 
     supported = {".pdf", ".md"}
 
+
     # 3. Scansione input
     input_files = []
     for root, _, files in os.walk(INBOX_DIR):
@@ -5095,9 +5129,70 @@ def main():
 
     print(f"   📂 Trovati {len(input_files)} file. Inizio sequenza PRODUCER/CONSUMER...")
 
+
+    # Modalità sequenziale opzionale:
+    # utile per PDF molto pesanti Vision-heavy, dove producer e consumer
+    # rischiano di stressare Ollama anche con un solo consumer.
+    if not USE_PRODUCER_CONSUMER:
+        print("   🧱 Modalità sequenziale attiva: producer/consumer disabilitato.")
+
+        for root_folder, file_path in input_files:
+            filename = os.path.basename(file_path)
+            log_id = None
+
+            try:
+                doc_meta = dispatch_document(file_path, root_folder)
+                log_id = pg_start_log(filename, "document")
+
+                print(f"   ⚙️ Extracting: {filename}...")
+
+                if file_path.lower().endswith(".md"):
+                    chunks = extract_markdown_chunks(file_path, log_id)
+                else:
+                    chunks = extract_file_chunks(file_path, log_id)
+
+                if not chunks:
+                    pg_close_log(log_id, "FAILED", 0, 0, "No chunks extracted")
+                    shutil.move(file_path, os.path.join(FAILED_DIR, filename))
+                    continue
+
+                print(f"   🧠 Processing: {filename} | chunks={len(chunks)}")
+
+                process_ai_and_db(
+                    file_path=file_path,
+                    source_type="document",
+                    doc_meta=doc_meta,
+                    chunks=chunks,
+                    log_id=log_id
+                )
+
+            except Exception as e:
+                print(f"   ❌ Errore sequenziale su {filename}: {e}")
+
+                if log_id is not None:
+                    try:
+                        pg_close_log(log_id, "FAILED", 0, 0, str(e)[:500])
+                    except Exception:
+                        pass
+
+                try:
+                    if os.path.exists(file_path):
+                        shutil.move(file_path, os.path.join(FAILED_DIR, filename))
+                except Exception as move_e:
+                    print(f"   ⚠️ Errore spostamento FAILED: {move_e}")
+
+        print("\n" + "=" * 60)
+        print(f"   ✨ Ingestion sequenziale completata | total_time={time.time() - total_t0:.2f}s")
+        print("=" * 60)
+        return
+
+
     # 4. Coda documenti
-    # Tienila bassa: i chunks PDF possono essere pesanti in RAM.
-    doc_queue = queue.Queue(maxsize=3)
+    # Con PDF Vision-heavy conviene tenerla a 1:
+    # - meno RAM occupata
+    # - meno pressione su producer
+    # - meno rischio di avere troppi chunk pronti mentre Ollama è occupato
+    doc_queue = queue.Queue(maxsize=int(os.getenv("DOC_QUEUE_MAXSIZE", "1")))
 
     # 1 consumer perché hai una sola GPU/Ollama seriale.
     NUM_CONSUMERS = 1

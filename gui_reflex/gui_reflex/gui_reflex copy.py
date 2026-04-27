@@ -458,7 +458,7 @@ def is_user_data_analytics(query: str) -> bool:
     # Parole chiave analitiche
     keywords = [
         # Calcolo e Stima (Base)
-        "calcola", "calculate", "stima", "estimate", "totale", "total", "somma", "sum","analizza","analyse","analyze",
+        "calcola", "calculate", "stima", "estimate", "totale", "total", "somma", "sum","analizza","analyse","analyze"
         
         # Statistica e Analisi Dati
         "regressione", "regression", "correlazione", "correlation", "media", "mean", 
@@ -543,54 +543,17 @@ def has_sufficient_ab_sources(sources: List[SourceItem]) -> bool:
     return False
 
 
-def normalize_tier_value(tier: str) -> str:
-    """
-    Normalizza i tier in valori canonici:
-    A, B, C, GRAPH, USER oppure C come fallback.
-    Evita bug tipo: 'GRAPH' contiene la lettera 'A' e viene scambiato per Tier A.
-    """
-    t = (tier or "").strip().upper()
-
-    if not t:
-        return "C"
-
-    if t == "GRAPH" or t.startswith("GRAPH"):
-        return "GRAPH"
-
-    if t == "USER" or t.startswith("USER"):
-        return "USER"
-
-    if t == "A" or t == "TIER_A_METHODOLOGY" or t.endswith("_A_METHODOLOGY"):
-        return "A"
-
-    if t == "B" or t == "TIER_B_REFERENCE" or t.endswith("_B_REFERENCE"):
-        return "B"
-
-    if t == "C" or t == "TIER_C_NEWS" or t.endswith("_C_NEWS") or "NEWS" in t:
-        return "C"
-
-    return t
-
 def tier_score_delta(tier: str, query_text: str) -> float:
-    """
-    Applica boost/penalty in modo sicuro sui tier normalizzati.
-    Nota importante:
-    - non usare mai 'if "A" in tier', perché 'GRAPH' contiene la lettera A.
-    """
-    t = normalize_tier_value(tier)
-
-    if t == "A":
+    t = (tier or "").strip().upper()
+    # Se la stringa contiene "A", assegna il boost di metodologia
+    if "A" in t:
         return TIER_BOOST_A
-
-    if t == "B":
+    if "B" in t:
         return TIER_BOOST_B
-
-    if t == "C":
-        if TIER_C_PENALTY_IF_NOT_NEWS and not is_news_query(query_text):
+    if t.endswith("_C_NEWS") or t == "TIER_C_NEWS" or t == "C":
+        if TIER_C_PENALTY_IF_NOT_NEWS and (not is_news_query(query_text)):
             return -TIER_PENALTY_C
         return 0.0
-
-    # GRAPH, USER, UNKNOWN: nessun boost metodologico
     return 0.0
 
 def diversify(items: List[Dict[str, Any]], max_per_page: int, max_per_doc: int, final_k: int) -> List[Dict[str, Any]]:
@@ -631,133 +594,91 @@ def append_audit_log(audit: AuditTrail):
 # 🔍 Neo4j Graph Expansion
 # =========================
 def get_graph_entities(chunk_ids: List[str]) -> Dict[str, List[GraphEntity]]:
-    """
-    Recupera le entità collegate ai chunk.
-    Coerente con ingestion:
-    - Entity -> Chunk usa PRESENT_IN
-    - Mantiene compatibilità anche con vecchie ingestion che usavano MENTIONED_IN
-    """
     if not chunk_ids or not neo4j_driver:
         return {}
-
     graph_map: Dict[str, List[GraphEntity]] = {}
-
     query = """
-    MATCH (e:Entity)-[r:PRESENT_IN|MENTIONED_IN]->(c:Chunk)
-    WHERE coalesce(c.chunk_id, c.id) IN $ids
-    RETURN
-        coalesce(c.chunk_id, c.id) AS chunk_id,
-        coalesce(e.name, e.label, e.id) AS name,
-        coalesce(e.category, labels(e)[0], 'Entity') AS type,
-        type(r) AS rel
+    MATCH (e:Entity)-[r:MENTIONED_IN]->(c:Chunk)
+    WHERE c.id IN $ids
+    RETURN c.id as chunk_id,
+           coalesce(e.label, e.id) as name,
+           labels(e)[0] as type,
+           type(r) as rel
     LIMIT 300
     """
-
     try:
         with neo4j_driver.session() as session:
             result = session.run(query, ids=chunk_ids)
-
             for record in result:
                 cid = record["chunk_id"]
-
                 entity = GraphEntity(
                     name=record["name"],
                     type=record["type"],
                     relation=record["rel"],
                 )
-
                 graph_map.setdefault(cid, []).append(entity)
-
     except Exception as e:
         print(f"⚠️ Neo4j Query Error (entities): {e}")
-
     return graph_map
 
 
 def get_formulas_for_chunks(chunk_ids: List[str], limit: int = GRAPH_MAX_FORMULAS) -> List[str]:
-    """
-    Recupera formule collegate ai chunk.
-    Coerente con ingestion:
-    - Formula -> Chunk usa MENTIONED_IN
-    """
+    """Return short strings describing formulas linked to the retrieved chunks."""
     if not chunk_ids or not neo4j_driver:
         return []
-
     query = """
     MATCH (f:Formula)-[:MENTIONED_IN]->(c:Chunk)
-    WHERE coalesce(c.chunk_id, c.id) IN $ids
-    RETURN
-        f.latex AS latex,
-        f.plain AS plain,
-        f.meaning_it AS meaning
+    WHERE c.id IN $ids
+    RETURN f.latex AS latex, f.plain AS plain, f.meaning_it AS meaning
     LIMIT $lim
     """
-
-    out: List[str] = []
-
+    out = []
     try:
         with neo4j_driver.session() as session:
             res = session.run(query, ids=chunk_ids, lim=limit)
-
             for r in res:
                 latex = (r["latex"] or "").strip()
                 plain = (r["plain"] or "").strip()
                 meaning = (r["meaning"] or "").strip()
-
-                parts = []
-
+                s = []
                 if latex:
-                    parts.append(f"LaTeX: {latex}")
-
+                    s.append(f"LaTeX: {latex}")
                 if plain:
-                    parts.append(f"Plain: {plain}")
-
+                    s.append(f"Plain: {plain}")
                 if meaning:
-                    parts.append(f"Meaning: {meaning}")
-
-                if parts:
-                    out.append(" | ".join(parts))
-
+                    s.append(f"Meaning: {meaning}")
+                if s:
+                    out.append(" | ".join(s))
     except Exception as e:
         print(f"⚠️ Neo4j Query Error (formulas): {e}")
-
     return out
 
 
 def get_neighbor_chunk_ids(chunk_ids: List[str], limit: int = GRAPH_MAX_NEIGHBOR_CHUNKS) -> List[str]:
-    """
-    Espande semanticamente i chunk usando entità condivise nel grafo.
-    Coerente con ingestion:
-    - Entity -> Chunk usa PRESENT_IN
-    - Compatibile anche con MENTIONED_IN per vecchi dati
-    """
     if not chunk_ids or not neo4j_driver:
         return []
-
+    
+    # Rimosso il commento inline '--' che causava il SyntaxError
     query = """
-    MATCH (c1:Chunk)<-[:PRESENT_IN|MENTIONED_IN]-(e:Entity)-[:PRESENT_IN|MENTIONED_IN]->(c2:Chunk)
-    WHERE coalesce(c1.chunk_id, c1.id) IN $ids
-      AND NOT coalesce(c2.chunk_id, c2.id) IN $ids
-      AND NOT coalesce(e.type, e.category, labels(e)[0], '') IN ['Generic', 'Year', 'Date']
-
-    WITH c2, count(DISTINCT e) AS strength
+    MATCH (c1:Chunk)<-[:MENTIONED_IN]-(e:Entity)-[:MENTIONED_IN]->(c2:Chunk)
+    WHERE c1.id IN $ids 
+      AND NOT c2.id IN $ids
+      AND NOT e.type IN ['Generic', 'Year', 'Date']
+    
+    WITH c2, count(DISTINCT e) as strength
     WHERE strength >= 2
-
-    RETURN coalesce(c2.chunk_id, c2.id) AS cid
+    
+    RETURN c2.id AS cid
     ORDER BY strength DESC
     LIMIT $lim
     """
-
-    out: List[str] = []
-
+    out = []
     try:
         with neo4j_driver.session() as session:
             res = session.run(query, ids=chunk_ids, lim=limit)
-            out = [str(r["cid"]) for r in res if r.get("cid")]
-
+            out = [r["cid"] for r in res if r.get("cid")]
     except Exception as e:
         print(f"⚠️ Neo4j Semantic Neighbors Error: {e}")
-
     return out
 
 
@@ -846,37 +767,12 @@ def build_retrieval_audit_md(
         lines.append(f"- Tempo: **{ms(timings['bm25_search'])}**")
     lines.append(f"- Match testuali: **{counts.get('bm25_hits', 0)}**")
 
-    # 📄 SEZIONE DOCUMENT SCOPE
-    if counts.get("requested_doc"):
-        lines.append("\n#### 📄 Document Scope")
-        lines.append(f"- Documento richiesto: `{counts.get('requested_doc')}`")
-        lines.append(f"- Chunk trovati nel documento: **{counts.get('doc_scope_hits', 0)}**")
-        lines.append(f"- Prima del filtro documento: **{counts.get('doc_scope_before', 0)}**")
-        lines.append(f"- Dopo il filtro documento: **{counts.get('doc_scope_after', 0)}**")
-
     # 🕸️ SEZIONE NEO4J (Grafo)
-    neo4j_direct = counts.get("neo4j_direct_hits", 0)
-    neo4j_expanded = counts.get("neo4j_hits", 0)
-    final_formulas = counts.get("final_formulas", 0)
-
-    if (
-        neo4j_direct > 0
-        or neo4j_expanded > 0
-        or final_formulas > 0
-        or "graph" in timings
-        or "neo4j_direct_search" in timings
-    ):
-        lines.append("\n#### 🕸️ Neo4j (Graph Search / Expansion)")
-
-        if "neo4j_direct_search" in timings:
-            lines.append(f"- Tempo direct search: **{ms(timings['neo4j_direct_search'])}**")
-
+    if counts.get('final_formulas', 0) > 0 or "graph" in timings:
+        lines.append("\n#### 🕸️ Neo4j (Graph Expansion)")
         if "graph" in timings:
-            lines.append(f"- Tempo graph expansion: **{ms(timings['graph'])}**")
-
-        lines.append(f"- Chunk trovati da Neo4j direct search: **{neo4j_direct}**")
-        lines.append(f"- Chunk aggiunti da graph expansion: **{neo4j_expanded}**")
-        lines.append(f"- Formule collegate recuperate: **{final_formulas}**")
+            lines.append(f"- Tempo: **{ms(timings['graph'])}**")
+        lines.append(f"- Formule/Relazioni: **{counts.get('final_formulas', 0)}**")
 
     # ⚖️ SEZIONE PERFORMANCE & RERANK
     lines.append("\n#### ⚖️ Fusione & Reranking")
@@ -897,197 +793,93 @@ def build_retrieval_audit_md(
 
 def fetch_pg_chunks_by_uuid(chunk_uuids: List[str]) -> Dict[str, Dict[str, Any]]:
     """
-    Recupera da Postgres i chunk usando l'ID corretto: chunk_uuid.
-
-    Ritorna:
-    {
-        chunk_uuid: {
-            "chunk_uuid": ...,
-            "content_raw": ...,
-            "content_semantic": ...,
-            "metadata_json": ...,
-            "ingestion_ts": ...
-        }
-    }
-
-    Nota:
-    - chunk_uuid corrisponde all'id usato in Qdrant.
-    - chunk_uuid corrisponde al chunk_id usato in Neo4j.
-    - prende sempre la versione più recente del chunk in base a ingestion_ts.
+    Ritorna: {chunk_uuid: {"content_raw":..., "content_semantic":..., "metadata_json":..., "ingestion_ts":...}}
+    Prende SEMPRE la riga più recente per chunk_uuid.
     """
     if not PG_ENRICH_ENABLED or not pg_pool or not chunk_uuids:
         return {}
 
-    # Dedup preservando l'ordine
+    # dedup preservando ordine
     seen = set()
-    uuids: List[str] = []
-
+    uuids = []
     for u in chunk_uuids:
-        if not u:
-            continue
-
-        key = str(u).strip()
-        if not key or key in seen:
-            continue
-
-        seen.add(key)
-        uuids.append(key)
-
-    if not uuids:
-        return {}
+        if u and u not in seen:
+            uuids.append(u)
+            seen.add(u)
 
     sql = """
-    WITH wanted(chunk_uuid) AS (
-        VALUES %s
-    ),
+    WITH wanted(chunk_uuid) AS (VALUES %s),
     ranked AS (
-        SELECT
-            d.chunk_uuid::text AS chunk_uuid,
-            d.content_raw,
-            d.content_semantic,
-            d.metadata_json,
-            d.ingestion_ts,
-            ROW_NUMBER() OVER (
-                PARTITION BY d.chunk_uuid
-                ORDER BY d.ingestion_ts DESC
-            ) AS rn
-        FROM public.document_chunks d
-        JOIN wanted w
-          ON d.chunk_uuid::text = w.chunk_uuid::text
+      SELECT
+        d.chunk_uuid::text AS chunk_uuid,
+        d.content_raw,
+        d.content_semantic,
+        d.metadata_json,
+        d.ingestion_ts,
+        ROW_NUMBER() OVER (PARTITION BY d.chunk_uuid ORDER BY d.ingestion_ts DESC) AS rn
+     FROM public.document_chunks d
+    JOIN wanted w ON d.chunk_uuid::text = w.chunk_uuid::text
     )
-    SELECT
-        chunk_uuid,
-        content_raw,
-        content_semantic,
-        metadata_json,
-        ingestion_ts
+    SELECT chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts
     FROM ranked
     WHERE rn = 1;
     """
 
     conn = pg_pool.getconn()
-
     try:
         with conn.cursor() as cur:
-            execute_values(
-                cur,
-                sql,
-                [(u,) for u in uuids]
-            )
+            execute_values(cur, sql, [(u,) for u in uuids])
             rows = cur.fetchall()
-
         out: Dict[str, Dict[str, Any]] = {}
-
-        for chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts in rows:
-            # metadata_json può arrivare già come dict oppure come stringa JSON
-            if isinstance(metadata_json, str):
-                try:
-                    metadata_json = json.loads(metadata_json)
-                except Exception:
-                    metadata_json = {}
-
-            if metadata_json is None:
-                metadata_json = {}
-
+        for (chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts) in rows:
             out[str(chunk_uuid)] = {
-                "chunk_uuid": str(chunk_uuid),
-                "content_raw": content_raw or "",
-                "content_semantic": content_semantic or "",
+                "content_raw": content_raw,
+                "content_semantic": content_semantic,
                 "metadata_json": metadata_json,
                 "ingestion_ts": ingestion_ts.isoformat() if ingestion_ts else "",
             }
-
         return out
-
     except Exception as e:
-        print(f"⚠️ PG enrich by chunk_uuid error: {e}")
+        print(f"⚠️ PG enrich error: {e}")
         return {}
-
     finally:
         pg_pool.putconn(conn)
 
 
 def search_pg_bm25(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
-    """
-    Ricerca keyword/BM25-like su Postgres usando full-text search.
-    Ritorna chunk identificati da chunk_uuid, coerenti con Qdrant e Neo4j.
-    """
-    if not PG_ENRICH_ENABLED or not pg_pool:
-        return []
+    if not PG_ENRICH_ENABLED or not pg_pool: return []
+    if not query_text.strip(): return []
 
-    if not query_text or not query_text.strip():
-        return []
+    # FIX: Creazione di una stringa con operatore OR (|) basata sui token principali
+    tokens = [w for w in query_text.split() if len(w) > 3]
+    if not tokens: return []
+    pg_query = " | ".join(tokens) 
 
-    tokens = re.findall(r"[A-Za-zÀ-ÿ0-9_]+", query_text.lower())
-    tokens = [t for t in tokens if len(t) > 3]
-
-    if not tokens:
-        return []
-
-    pg_query = " | ".join(tokens)
-
+    # Usiamo to_tsquery al posto di websearch_to_tsquery
     sql = """
-    WITH q AS (
-        SELECT to_tsquery('simple', %s) AS tsq
-    )
-    SELECT
-        chunk_uuid::text,
-        content_raw,
-        content_semantic,
-        metadata_json,
+    SELECT chunk_uuid::text, content_raw, content_semantic, metadata_json,
         ts_rank_cd(
-            to_tsvector(
-                'simple',
-                COALESCE(content_semantic, '') || ' ' ||
-                COALESCE(content_raw, '') || ' ' ||
-                COALESCE(metadata_json::text, '')
-            ),
-            q.tsq
+            to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')), 
+            to_tsquery('simple', %s)
         ) AS rank
-    FROM public.document_chunks, q
-    WHERE
-        to_tsvector(
-            'simple',
-            COALESCE(content_semantic, '') || ' ' ||
-            COALESCE(content_raw, '') || ' ' ||
-            COALESCE(metadata_json::text, '')
-        ) @@ q.tsq
-    ORDER BY rank DESC
-    LIMIT %s;
+    FROM public.document_chunks
+    WHERE 
+        to_tsvector('simple', content_semantic || ' ' || COALESCE(metadata_json::text, '')) 
+        @@ to_tsquery('simple', %s)
+    ORDER BY rank DESC LIMIT %s;
     """
-
+    
     conn = pg_pool.getconn()
-
     try:
         with conn.cursor() as cur:
-            cur.execute(sql, (pg_query, limit))
+            cur.execute(sql, (pg_query, pg_query, limit))
             rows = cur.fetchall()
-
-        out: List[Dict[str, Any]] = []
-
-        for chunk_uuid, content_raw, content_semantic, metadata_json, rank in rows:
-            if isinstance(metadata_json, str):
-                try:
-                    metadata_json = json.loads(metadata_json)
-                except Exception:
-                    metadata_json = {}
-
-            if metadata_json is None:
-                metadata_json = {}
-
-            out.append({
-                "id": str(chunk_uuid),
-                "content": content_semantic or content_raw or "",
-                "metadata": metadata_json,
-                "score": float(rank or 0.0),
-            })
-
-        return out
-
+            return [{
+                "id": r[0], "content": r[2] or r[1], "metadata": r[3] or {}, "score": float(r[4])
+            } for r in rows]
     except Exception as e:
         print(f"⚠️ BM25 Error: {e}")
         return []
-
     finally:
         pg_pool.putconn(conn)
 
@@ -1095,449 +887,109 @@ def search_pg_bm25(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
 # 🔍 RAG v2 Retrieval
 # =========================
 
-
-def apply_rrf_scoring(candidates: List[Dict[str, Any]], k: int = 60):
-    """
-    Reciprocal Rank Fusion tra:
-    - Qdrant vector rank
-    - Postgres BM25 rank
-    - Neo4j graph rank
-    """
-
-    for c in candidates:
-        c["rrf_score"] = 0.0
-
-    vec_sorted = sorted(
-        [c for c in candidates if c.get("score_vec", c.get("score_base", 0.0)) > 0],
-        key=lambda x: x.get("score_vec", x.get("score_base", 0.0)),
-        reverse=True,
-    )
-
-    bm25_sorted = sorted(
-        [c for c in candidates if c.get("score_bm25", 0.0) > 0],
-        key=lambda x: x.get("score_bm25", 0.0),
-        reverse=True,
-    )
-
-    graph_sorted = sorted(
-        [c for c in candidates if c.get("score_graph", 0.0) > 0],
-        key=lambda x: x.get("score_graph", 0.0),
-        reverse=True,
-    )
-
-    for rank, item in enumerate(vec_sorted):
-        item["rrf_score"] += 1.0 / (k + rank + 1)
-
-    for rank, item in enumerate(bm25_sorted):
-        item["rrf_score"] += 1.0 / (k + rank + 1)
-
-    for rank, item in enumerate(graph_sorted):
-        item["rrf_score"] += 1.0 / (k + rank + 1)
-
-
-RAG_STOPWORDS = {
-    # italian
-    "della", "delle", "degli", "dello", "dalla", "dalle", "dagli",
-    "nella", "nelle", "negli", "nello", "alla", "alle", "agli",
-    "sono", "presenti", "presente", "ciascuna", "ciascuno",
-    "quale", "quali", "cosa", "come", "dove", "quando",
-    "spiega", "spiegami", "riporta", "riportale", "mostra",
-    "documento", "file", "fonte", "fonti",
-
-    # english
-    "what", "which", "where", "when", "explain", "show",
-    "report", "document", "file", "source", "sources",
-    "present", "available", "each", "about",
-
-    # rag/formula generic terms
-    "formula", "formule", "matematica", "matematiche",
-    "latex", "concetto", "riferisce"
-}
-
-
-def extract_rag_tokens(query_text: str) -> List[str]:
-    """
-    Estrae token utili per:
-    - filename matching
-    - Neo4j direct search
-    - formula lookup
-    Evita stopword tipo 'sono', 'presenti', 'ciascuna'.
-    """
-    tokens = [
-        t.lower()
-        for t in re.findall(r"[A-Za-zÀ-ÿ0-9_]+", query_text or "")
-        if len(t) > 3
-    ]
-
-    return [t for t in tokens if t not in RAG_STOPWORDS]
-
-
-def search_neo4j_entities(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
-    """
-    Ricerca diretta nel grafo Neo4j sui nodi Entity.
-
-    Versione pulita:
-    - non usa proprietà Neo4j inesistenti come source_name/content_semantic/content_raw
-    - ritorna chunk_id coerente con chunk_uuid usato da Qdrant/Postgres
-    - lascia a Postgres il compito di arricchire il contenuto completo
-    """
-    if not neo4j_driver or not query_text.strip():
-        return []
-
-    tokens = extract_rag_tokens(query_text)
-
-    if not tokens:
-        return []
-
-    cypher = """
-    MATCH (e:Entity)
-    WHERE any(tok IN $tokens WHERE
-        toLower(coalesce(e.name, '')) CONTAINS tok OR
-        toLower(coalesce(e.id, '')) CONTAINS tok OR
-        toLower(coalesce(e.label, '')) CONTAINS tok OR
-        toLower(coalesce(e.description, '')) CONTAINS tok OR
-        any(s IN coalesce(e.synonyms, []) WHERE toLower(s) CONTAINS tok)
-    )
-    MATCH (e)-[r]-(c:Chunk)
-    WITH e, c, count(r) AS rel_count
-    RETURN
-        coalesce(c.chunk_id, c.id) AS chunk_id,
-        coalesce(c.filename, 'Neo4j') AS filename,
-        coalesce(c.page, 0) AS page,
-        coalesce(c.chunk_index, 0) AS chunk_index,
-        coalesce(c.text, c.content, '') AS content,
-        labels(e)[0] AS entity_label,
-        coalesce(e.name, e.label, e.id) AS entity_name,
-        rel_count
-    ORDER BY rel_count DESC
-    LIMIT $limit
-    """
-
-    out: List[Dict[str, Any]] = []
-
-    try:
-        with neo4j_driver.session() as session:
-            rows = session.run(cypher, tokens=tokens, limit=limit)
-
-            for r in rows:
-                cid = r.get("chunk_id")
-
-                if not cid:
-                    continue
-
-                out.append({
-                    "id": str(cid),
-                    "content": r.get("content") or "",
-                    "filename": r.get("filename") or "Neo4j",
-                    "page": int(r.get("page") or 0),
-                    "type": "graph",
-                    "tier": "GRAPH",
-                    "score_graph": float(r.get("rel_count") or 1.0),
-                    "origin": f"Neo4j Entity Search: {r.get('entity_name')}",
-                    "section_hint": f"Entity: {r.get('entity_name')}",
-                })
-
-    except Exception as e:
-        print(f"⚠️ Neo4j direct search error: {e}")
-
-    return out
-
-def search_neo4j_formulas(query_text: str, limit: int = 20) -> List[Dict[str, Any]]:
-    """
-    Ricerca diretta delle formule nel Knowledge Graph.
-
-    Utile per domande come:
-    - quali formule sono presenti nel documento?
-    - riportale in LaTeX
-    - quali equazioni usa il documento?
-    """
-    if not neo4j_driver or not query_text.strip():
-        return []
-
-    tokens = extract_rag_tokens(query_text)
-
-    if not tokens:
-        return []
-
-    cypher = """
-    MATCH (f:Formula)-[:MENTIONED_IN]->(c:Chunk)
-    WHERE any(tok IN $tokens WHERE
-        toLower(coalesce(c.filename, '')) CONTAINS tok OR
-        toLower(coalesce(f.latex, '')) CONTAINS tok OR
-        toLower(coalesce(f.plain, '')) CONTAINS tok OR
-        toLower(coalesce(f.meaning_it, '')) CONTAINS tok
-    )
-    RETURN
-        coalesce(c.chunk_id, c.id) AS chunk_id,
-        coalesce(c.filename, 'Neo4j') AS filename,
-        coalesce(c.page, 0) AS page,
-        coalesce(c.chunk_index, 0) AS chunk_index,
-        coalesce(f.latex, '') AS latex,
-        coalesce(f.plain, '') AS plain,
-        coalesce(f.meaning_it, '') AS meaning,
-        count(*) AS rel_count
-    ORDER BY page ASC, chunk_index ASC
-    LIMIT $limit
-    """
-
-    out: List[Dict[str, Any]] = []
-
-    try:
-        with neo4j_driver.session() as session:
-            rows = session.run(cypher, tokens=tokens, limit=limit)
-
-            for r in rows:
-                cid = r.get("chunk_id")
-
-                if not cid:
-                    continue
-
-                latex = (r.get("latex") or "").strip()
-                plain = (r.get("plain") or "").strip()
-                meaning = (r.get("meaning") or "").strip()
-
-                formula_parts = []
-
-                if latex:
-                    formula_parts.append(f"LaTeX: {latex}")
-
-                if plain:
-                    formula_parts.append(f"Plain: {plain}")
-
-                if meaning:
-                    formula_parts.append(f"Meaning: {meaning}")
-
-                if not formula_parts:
-                    continue
-
-                out.append({
-                    "id": str(cid),
-                    "content": "Formula from Knowledge Graph:\n" + "\n".join(formula_parts),
-                    "filename": r.get("filename") or "Neo4j",
-                    "page": int(r.get("page") or 0),
-                    "type": "formula",
-                    "tier": "GRAPH",
-                    "score_graph": float(r.get("rel_count") or 5.0),
-                    "origin": "Neo4j Formula Search",
-                    "section_hint": "Formula node",
-                })
-
-    except Exception as e:
-        print(f"⚠️ Neo4j formula search error: {e}")
-
-    return out
-
-
-def normalize_doc_name(value: str) -> str:
-    """
-    Normalizza un nome documento per confronti robusti:
-    - lowercase
-    - rimuove estensioni
-    - rimuove caratteri non alfanumerici
-    - rimuove suffissi tecnici comuni tipo _out / output
-    """
-    if not value:
-        return ""
-
-    v = os.path.basename(str(value).lower().strip())
-
-    v = re.sub(r"\.(pdf|md|txt|docx|html)$", "", v)
-    v = re.sub(r"[_\-\s]+out$", "", v)
-    v = re.sub(r"[_\-\s]+output$", "", v)
-    v = re.sub(r"[^a-z0-9]+", "", v)
-
-    return v
-
-
-def extract_requested_document(query_text: str) -> str:
-    """
-    Estrae il documento richiesto dalla query.
-    Esempi:
-    - documento TRADING_ALGORITMICO_TES_MIS_out
-    - file Analisi_Tecnica_Trading_graph.pdf
-    - nel pdf XYZ
-    """
-    q = query_text or ""
-
-    patterns = [
-        r"\b(?:documento|file|pdf)\s+([A-Za-z0-9_\-\.]+)",
-        r"\b(?:nel|nella|dal|dalla)\s+(?:documento|file|pdf)\s+([A-Za-z0-9_\-\.]+)",
-    ]
-
-    for pattern in patterns:
-        m = re.search(pattern, q, flags=re.IGNORECASE)
-        if m:
-            return m.group(1).strip(" .,:;!?\"'")
-
-    return ""
-
-
-def candidate_matches_requested_doc(candidate: Dict[str, Any], requested_doc: str) -> bool:
-    """
-    Verifica se un candidato appartiene al documento richiesto.
-    """
-    if not requested_doc:
-        return True
-
-    wanted = normalize_doc_name(requested_doc)
-    if not wanted:
-        return True
-
-    filename = normalize_doc_name(candidate.get("filename", ""))
-
-    # Match robusto nei due versi
-    return wanted in filename or filename in wanted
-
-def search_pg_by_document_scope(
-    requested_doc: str,
-    query_text: str,
-    limit: int = 80
-) -> List[Dict[str, Any]]:
-    """
-    Recupera chunk da Postgres appartenenti al documento richiesto,
-    indipendentemente dal fatto che siano entrati nei primi risultati BM25 generici.
-
-    Serve per evitare falsi negativi quando l'utente chiede:
-    "nel documento X..."
-    """
-    if not PG_ENRICH_ENABLED or not pg_pool:
-        return []
-
-    wanted_norm = normalize_doc_name(requested_doc)
-
-    if not wanted_norm:
-        return []
+def fetch_pg_chunks_by_doc_and_index(pairs: List[Tuple[str, int]]) -> Dict[Tuple[str, int], Dict[str, Any]]:
+    """Return latest PG chunk rows for each (doc_id, chunk_index)."""
+    if not PG_ENRICH_ENABLED or not pg_pool or not pairs:
+        return {}
+
+    # dedup preserving order
+    seen = set()
+    uniq: List[Tuple[str, int]] = []
+    for d, i in pairs:
+        if not d:
+            continue
+        key = (str(d), int(i))
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(key)
 
     sql = """
-    WITH q AS (
-        SELECT plainto_tsquery('simple', %s) AS tsq
-    ),
+    WITH wanted(doc_id, chunk_index) AS (VALUES %s),
     ranked AS (
-        SELECT
-            d.chunk_uuid::text AS chunk_uuid,
-            d.content_raw,
-            d.content_semantic,
-            d.metadata_json,
-            d.ingestion_ts,
-
-            regexp_replace(
-                regexp_replace(
-                    regexp_replace(
-                        lower(
-                            coalesce(
-                                d.metadata_json->>'filename',
-                                d.metadata_json->>'source_name',
-                                ''
-                            )
-                        ),
-                        '\\.(pdf|md|txt|docx|html)$',
-                        '',
-                        'g'
-                    ),
-                    '[_\\-\\s]+(out|output)$',
-                    '',
-                    'g'
-                ),
-                '[^a-z0-9]+',
-                '',
-                'g'
-            ) AS filename_norm,
-
-            ts_rank_cd(
-                to_tsvector(
-                    'simple',
-                    coalesce(d.content_semantic, '') || ' ' ||
-                    coalesce(d.content_raw, '') || ' ' ||
-                    coalesce(d.metadata_json::text, '')
-                ),
-                q.tsq
-            ) AS rank,
-
-            row_number() OVER (
-                PARTITION BY d.chunk_uuid
-                ORDER BY d.ingestion_ts DESC
-            ) AS rn
-
-        FROM public.document_chunks d, q
+      SELECT
+        d.doc_id::text AS doc_id,
+        d.chunk_index::int AS chunk_index,
+        d.chunk_uuid::text AS chunk_uuid,
+        d.content_raw,
+        d.content_semantic,
+        d.metadata_json,
+        d.ingestion_ts,
+        ROW_NUMBER() OVER (
+          PARTITION BY d.doc_id, d.chunk_index
+          ORDER BY d.ingestion_ts DESC
+        ) AS rn
+        FROM public.document_chunks d
+        JOIN wanted w ON d.chunk_uuid::text = w.chunk_uuid::text
+       AND d.chunk_index::int = w.chunk_index
     )
-    SELECT
-        chunk_uuid,
-        content_raw,
-        content_semantic,
-        metadata_json,
-        ingestion_ts,
-        rank
+    SELECT doc_id, chunk_index, chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts
     FROM ranked
-    WHERE rn = 1
-      AND length(filename_norm) > 0
-      AND (
-            filename_norm LIKE %s
-            OR %s LIKE ('%%' || filename_norm || '%%')
-      )
-    ORDER BY rank DESC, ingestion_ts DESC
-    LIMIT %s;
+    WHERE rn = 1;
     """
 
     conn = pg_pool.getconn()
-
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                sql,
-                (
-                    query_text,
-                    f"%{wanted_norm}%",
-                    wanted_norm,
-                    limit,
-                )
-            )
+            execute_values(cur, sql, [(d, i) for d, i in uniq])
             rows = cur.fetchall()
 
-        out: List[Dict[str, Any]] = []
-
-        for chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts, rank in rows:
-            if isinstance(metadata_json, str):
-                try:
-                    metadata_json = json.loads(metadata_json)
-                except Exception:
-                    metadata_json = {}
-
-            if metadata_json is None:
-                metadata_json = {}
-
-            out.append({
-                "id": str(chunk_uuid),
-                "content": content_semantic or content_raw or "",
-                "metadata": metadata_json,
-                "score": float(rank or 0.001),
-                "origin": "PostgresDocScope",
+        out: Dict[Tuple[str, int], Dict[str, Any]] = {}
+        for (doc_id, chunk_index, chunk_uuid, content_raw, content_semantic, metadata_json, ingestion_ts) in rows:
+            out[(str(doc_id), int(chunk_index))] = {
+                "chunk_uuid": chunk_uuid,
+                "content_raw": content_raw,
+                "content_semantic": content_semantic,
+                "metadata_json": metadata_json,
                 "ingestion_ts": ingestion_ts.isoformat() if ingestion_ts else "",
-            })
-
+            }
         return out
-
     except Exception as e:
-        print(f"⚠️ PG document scope search error: {e}")
-        return []
-
+        print(f"⚠️ PG enrich (doc_id+chunk_index) error: {e}")
+        return {}
     finally:
         pg_pool.putconn(conn)
 
+def apply_rrf_scoring(candidates: List[Dict[str, Any]], k: int = 60):
+    """
+    Applica Reciprocal Rank Fusion (RRF) direttamente alla lista di candidati.
+    Modifica la lista in-place.
+    """
+    # 1. Inizializzazione sicura: assicuriamoci che tutti abbiano il campo rrf_score
+    for c in candidates:
+        c["rrf_score"] = 0.0
+
+    # 2. RRF su Vettori (Qdrant)
+    # Creiamo una lista temporanea ordinata per score vettoriale
+    vec_sorted = sorted(
+        [c for c in candidates if c.get("score_vec", 0) > 0], 
+        key=lambda x: x["score_vec"], 
+        reverse=True
+    )
+    
+    # Assegniamo i punti basati sul rango
+    for rank, item in enumerate(vec_sorted):
+        # item è un riferimento al dizionario originale, quindi la modifica è persistente
+        item["rrf_score"] += (1.0 / (k + rank + 1))
+
+    # 3. RRF su Keyword (BM25 Postgres)
+    bm25_sorted = sorted(
+        [c for c in candidates if c.get("score_bm25", 0) > 0], 
+        key=lambda x: x["score_bm25"], 
+        reverse=True
+    )
+    
+    for rank, item in enumerate(bm25_sorted):
+        item["rrf_score"] += (1.0 / (k + rank + 1))
+
 def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     """
-    Retrieval V5:
-    - Qdrant vector search
-    - Postgres BM25 keyword search
-    - Neo4j entity/formula search
-    - Neo4j graph expansion
-    - RRF fusion
-    - CrossEncoder reranking
-    - Final Postgres enrichment by chunk_uuid
+    Retrieval V4: DEBUG ESTREMO + FILENAME FORCING + GRAPH EXPANSION.
     """
-    print(f"\n\n{'=' * 40}")
-    print("🔎 DEBUG RETRIEVAL START")
+    print(f"\n\n{'='*40}")
+    print(f"🔎 DEBUG RETRIEVAL START")
     print(f"❓ Query: '{query_text}'")
-
+    
     if not embedder or not qdrant_client_inst:
         return [SourceItem(id="error", content="Backend OFF", filename="System")], "Backend OFF"
 
@@ -1546,269 +998,84 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     counts: Dict[str, Any] = {}
     intent = detect_intent(query_text)
 
-    requested_doc = extract_requested_document(query_text)
-    requested_doc_norm = normalize_doc_name(requested_doc)
-
-    if requested_doc:
-        print(f"📄 Requested document scope: {requested_doc} -> {requested_doc_norm}")
-        counts["requested_doc"] = requested_doc
-
-
-    # 1) Embedding query
+    # 1) Embedding
     t0 = time.time()
     query_vector = embedder.encode(query_text, normalize_embeddings=True).tolist()
     timings["embed"] = time.time() - t0
 
-    # 2) Qdrant vector search
+    # 2) Qdrant (Vettoriale)
     t0 = time.time()
     hits = []
-
     try:
         hits = qdrant_client_inst.search(
             collection_name=COLLECTION_NAME,
             query_vector=query_vector,
-            limit=QDRANT_CANDIDATES,
+            limit=20, 
             with_payload=True,
         )
         counts["qdrant_hits"] = len(hits)
         print(f"🌌 Qdrant ha trovato {len(hits)} chunk.")
     except Exception as e:
         print(f"❌ Qdrant Error: {e}")
-        counts["qdrant_hits"] = 0
-
     timings["qdrant_search"] = time.time() - t0
 
-    # 3) Postgres BM25 search
+    # 3) Postgres (Keyword)
     t0 = time.time()
-    bm25_hits = search_pg_bm25(query_text, limit=40)
+    bm25_hits = search_pg_bm25(query_text, limit=40) 
     counts["bm25_hits"] = len(bm25_hits)
     print(f"🐘 Postgres ha trovato {len(bm25_hits)} chunk.")
     timings["bm25_search"] = time.time() - t0
 
+    # 4) Unificazione Candidati
+    candidates_dict = {}
 
-    # 3B) Postgres document-scope search
-    # Se l'utente chiede un documento specifico, recuperiamo chunk direttamente da quel documento.
-    t0 = time.time()
-    doc_scope_hits = []
-
-    if requested_doc:
-        doc_scope_hits = search_pg_by_document_scope(
-            requested_doc=requested_doc,
-            query_text=query_text,
-            limit=80,
-        )
-
-    counts["doc_scope_hits"] = len(doc_scope_hits)
-
-    if requested_doc:
-        print(
-            f"📄 Postgres document-scope search ha trovato "
-            f"{len(doc_scope_hits)} chunk per documento '{requested_doc}'."
-        )
-
-    timings["doc_scope_search"] = time.time() - t0
-
-    # 4) Neo4j direct entity/formula search
-    t0 = time.time()
-
-    neo4j_entity_hits = search_neo4j_entities(query_text, limit=20)
-
-    formula_query = (
-        intent == "formula"
-        or any(k in (query_text or "").lower() for k in [
-            "formula", "formule", "latex", "equazione", "equazioni"
-        ])
-    )
-
-    neo4j_formula_hits = (
-        search_neo4j_formulas(query_text, limit=GRAPH_MAX_FORMULAS)
-        if formula_query
-        else []
-    )
-
-    neo4j_direct_hits = neo4j_entity_hits + neo4j_formula_hits
-
-    counts["neo4j_entity_hits"] = len(neo4j_entity_hits)
-    counts["neo4j_formula_direct_hits"] = len(neo4j_formula_hits)
-    counts["neo4j_direct_hits"] = len(neo4j_direct_hits)
-
-    print(
-        f"🕸️ Neo4j direct search ha trovato {len(neo4j_direct_hits)} chunk "
-        f"({len(neo4j_entity_hits)} entity, {len(neo4j_formula_hits)} formule)."
-    )
-
-    timings["neo4j_direct_search"] = time.time() - t0
-
-    # 5) Candidate merge
-    candidates_dict: Dict[str, Dict[str, Any]] = {}
-
-    # 5A) Import Qdrant candidates
+    # -- Import Qdrant --
     for hit in hits:
         uid = str(hit.id)
-        payload = hit.payload or {}
-
-        content = safe_payload_text(payload)
-        if not content:
-            continue
-
+        p = hit.payload or {}
+        fname = str(p.get("filename", "Unknown"))
         candidates_dict[uid] = {
             "id": uid,
-            "content": content,
-            "filename": str(payload.get("filename", "Unknown")),
-            "page": get_payload_page(payload),
-            "type": get_payload_type(payload),
-            "tier": normalize_tier_value(str(payload.get("tier", "C"))),
+            "content": safe_payload_text(p),
+            "filename": fname,
+            "page": get_payload_page(p),
+            "type": get_payload_type(p),
+            "tier": str(p.get("tier", "C")),
             "score_base": float(hit.score or 0.0),
-            "score_vec": float(hit.score or 0.0),
-            "score_bm25": 0.0,
-            "score_graph": 0.0,
             "origin": "Qdrant",
-            "section_hint": get_payload_section(payload),
+            "section_hint": get_payload_section(p)
         }
 
-    # 5A-BIS) Import Postgres document-scope candidates
-    for d in doc_scope_hits:
-        uid = str(d.get("id", "")).strip()
-
-        if not uid:
-            continue
-
-        meta = d.get("metadata", {}) or {}
-
-        if isinstance(meta, str):
-            try:
-                meta = json.loads(meta)
-            except Exception:
-                meta = {}
-
-        fname = meta.get("filename") or meta.get("source_name") or requested_doc or "Unknown"
-        page = int(meta.get("page_no") or meta.get("page") or 0)
-        toon_type = meta.get("toon_type") or meta.get("type") or "text"
-        tier = normalize_tier_value(meta.get("tier", "C"))
-
-        if uid not in candidates_dict:
-            candidates_dict[uid] = {
-                "id": uid,
-                "content": d.get("content", ""),
-                "filename": fname,
-                "page": page,
-                "type": toon_type,
-                "tier": tier,
-                "score_base": 0.0,
-                "score_vec": 0.0,
-                "score_bm25": float(d.get("score", 0.001)),
-                "score_graph": 0.0,
-                "score_doc_scope": 1.0,
-                "origin": "PostgresDocScope",
-                "section_hint": meta.get("section_hint", ""),
-            }
-        else:
-            candidates_dict[uid]["score_bm25"] = max(
-                float(candidates_dict[uid].get("score_bm25", 0.0)),
-                float(d.get("score", 0.001)),
-            )
-            candidates_dict[uid]["score_doc_scope"] = 1.0
-
-            # Se Qdrant/Neo4j avevano filename Unknown o Neo4j,
-            # correggiamo usando i metadati Postgres.
-            if candidates_dict[uid].get("filename") in ("", "Unknown", "Neo4j"):
-                candidates_dict[uid]["filename"] = fname
-
-            if not candidates_dict[uid].get("page"):
-                candidates_dict[uid]["page"] = page
-
-            if "PostgresDocScope" not in candidates_dict[uid]["origin"]:
-                candidates_dict[uid]["origin"] += " + PostgresDocScope"
-
-    # 5B) Import Postgres BM25 candidates
+    # -- Import Postgres --
     for b in bm25_hits:
-        uid = str(b.get("id", "")).strip()
-        if not uid:
-            continue
-
-        meta = b.get("metadata", {}) or {}
-        if isinstance(meta, str):
-            try:
-                meta = json.loads(meta)
-            except Exception:
-                meta = {}
-
-        fname = meta.get("filename") or meta.get("source_name") or "Unknown"
-        page = int(meta.get("page_no") or meta.get("page") or 0)
-        toon_type = meta.get("toon_type") or meta.get("type") or "text"
-        tier = normalize_tier_value(meta.get("tier", "C"))
-
+        uid = b["id"]
+        meta = b.get("metadata", {})
+        fname = meta.get("filename", "Unknown")
         if uid not in candidates_dict:
             candidates_dict[uid] = {
                 "id": uid,
-                "content": b.get("content", ""),
+                "content": b["content"],
                 "filename": fname,
-                "page": page,
-                "type": toon_type,
-                "tier": tier,
-                "score_base": 0.0,
-                "score_vec": 0.0,
-                "score_bm25": float(b.get("score", 0.0)),
-                "score_graph": 0.0,
+                "page": int(meta.get("page_no") or 0),
+                "type": meta.get("toon_type", "text"),
+                "tier": meta.get("tier", "C"),
+                "score_base": 0.0, 
                 "origin": "Postgres",
-                "section_hint": meta.get("section_hint", ""),
+                "section_hint": meta.get("section_hint", "")
             }
-        else:
-            candidates_dict[uid]["score_bm25"] = max(
-                float(candidates_dict[uid].get("score_bm25", 0.0)),
-                float(b.get("score", 0.0)),
-            )
-            if "Postgres" not in candidates_dict[uid]["origin"]:
-                candidates_dict[uid]["origin"] += " + Postgres"
 
-    # 5C) Import Neo4j direct candidates
-    for g in neo4j_direct_hits:
-        uid = str(g.get("id", "")).strip()
-        if not uid:
-            continue
-
-        if uid not in candidates_dict:
-            candidates_dict[uid] = {
-                "id": uid,
-                "content": g.get("content", ""),
-                "filename": g.get("filename", "Neo4j"),
-                "page": int(g.get("page") or 0),
-                "type": g.get("type", "graph"),
-                "tier": "GRAPH",
-                "score_base": 0.0,
-                "score_vec": 0.0,
-                "score_bm25": 0.0,
-                "score_graph": float(g.get("score_graph", 0.0)),
-                "origin": g.get("origin", "Neo4j"),
-                "section_hint": g.get("section_hint", ""),
-            }
-        else:
-            candidates_dict[uid]["score_graph"] = max(
-                float(candidates_dict[uid].get("score_graph", 0.0)),
-                float(g.get("score_graph", 0.0)),
-            )
-            if "Neo4j" not in candidates_dict[uid]["origin"]:
-                candidates_dict[uid]["origin"] += " + Neo4j"
-
-    # 6) Neo4j graph expansion
+    # === INIZIO FIX: GRAPH EXPANSION (Neo4j) ===
     if GRAPH_EXPAND_ENABLED and neo4j_driver:
         t0_graph = time.time()
-
+        # 1. Usiamo i top hit di Qdrant come nodi di partenza (seed)
         seed_ids = [str(hit.id) for hit in hits][:10]
-        graph_sources = []
-
-        try:
-            neighbor_ids = get_neighbor_chunk_ids(
-                seed_ids,
-                limit=GRAPH_MAX_NEIGHBOR_CHUNKS,
-            )
-        except Exception as e:
-            print(f"⚠️ Neo4j neighbor search error: {e}")
-            neighbor_ids = []
-
+        
+        # 2. Troviamo i chunk vicini navigando il Grafo
+        neighbor_ids = get_neighbor_chunk_ids(seed_ids, limit=5)
+        
+        # 3. Scarichiamo il testo di questi nuovi chunk da Qdrant
         if neighbor_ids:
             graph_sources = fetch_chunks_from_qdrant_by_ids(neighbor_ids)
-
             for gs in graph_sources:
                 if gs.id not in candidates_dict:
                     candidates_dict[gs.id] = {
@@ -1817,270 +1084,100 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
                         "filename": gs.filename,
                         "page": gs.page,
                         "type": gs.type,
-                        "tier": normalize_tier_value(getattr(gs, "tier", "C")),
-                        "score_base": 0.0,
-                        "score_vec": 0.0,
-                        "score_bm25": 0.0,
-                        "score_graph": 1.0,
+                        "tier": getattr(gs, "tier", "C"),
+                        "score_base": 0.5, # Verrà poi affinato dal reranker
                         "origin": "Neo4j_Expansion",
-                        "section_hint": getattr(gs, "section_hint", ""),
+                        "section_hint": getattr(gs, "section_hint", "")
                     }
-
+            counts["neo4j_hits"] = len(graph_sources)
             print(f"🕸️ Neo4j ha aggiunto {len(graph_sources)} chunk semanticamente collegati.")
-
-        counts["neo4j_hits"] = len(graph_sources)
         timings["graph"] = time.time() - t0_graph
-    else:
-        counts["neo4j_hits"] = 0
+    # === FINE FIX: GRAPH EXPANSION ===
 
-    # 7) Final candidate list
     candidates = list(candidates_dict.values())
-
     if not candidates:
         print("❌ NESSUN CANDIDATO TROVATO!")
-        timings["total"] = time.time() - t_total0
-        return [], build_retrieval_audit_md(query_text, intent, timings, counts, [])
-
-    # 7B) HARD DOCUMENT SCOPE FILTER
-    # Se l'utente chiede un documento specifico, NON permettere fonti di altri documenti.
-    if requested_doc:
-        before_doc_scope = len(candidates)
-
-        scoped_candidates = [
-            c for c in candidates
-            if candidate_matches_requested_doc(c, requested_doc)
-        ]
-
-        counts["doc_scope_before"] = before_doc_scope
-        counts["doc_scope_after"] = len(scoped_candidates)
-
-        print(
-            f"📄 Document scope filter: {before_doc_scope} -> {len(scoped_candidates)} "
-            f"for requested_doc='{requested_doc}'"
-        )
-
-        if not scoped_candidates:
-            timings["total"] = time.time() - t_total0
-            audit = build_retrieval_audit_md(query_text, intent, timings, counts, [])
-            audit += (
-                f"\n\n#### 📄 Document Scope\n"
-                f"- Documento richiesto: `{requested_doc}`\n"
-                f"- Nessun chunk trovato appartenente al documento richiesto.\n"
-            )
-            return [], audit
-
-        candidates = scoped_candidates
+        return [], "Nessun risultato."
 
 
-
-    # 8) RRF scoring
-    apply_rrf_scoring(candidates)
-
-    query_tokens = extract_rag_tokens(query_text)
-
+    # 5) SCORING INTELLIGENTE & FILENAME BOOST (HARD MODE)
+    query_tokens = [w.lower() for w in query_text.split() if len(w) > 3]
     print(f"🎯 Target Tokens (Filename Match): {query_tokens}")
 
     for c in candidates:
         fname_lower = (c.get("filename") or "").lower()
-        hits_fname = sum(1 for token in query_tokens if token in fname_lower)
-        filename_boost = 0.03 * hits_fname
-
+        boost = 0.0
+        hits_fname = 0
+        
+        for token in query_tokens:
+            if token in fname_lower:
+                if token not in ["della", "delle", "file", "documento", "page", "pagina"]:
+                    hits_fname += 1
+        
         if hits_fname > 0:
+            boost = 5.0 * hits_fname  
             c["origin"] += " [TARGET FILE]"
-            print(f"   🚀 Filename boost per {c.get('filename')} (match={hits_fname})")
+            print(f"   🚀 SUPER BOOST per {c.get('filename')} (Match: {hits_fname} token)")
 
-        tier_delta = tier_score_delta(c.get("tier", ""), query_text)
+        c["final_score"] = float(c.get("score_base", 0.0)) + boost
 
-        doc_scope_boost = 0.20 if c.get("score_doc_scope", 0.0) > 0 else 0.0
-
-        c["pre_rerank_score"] = (
-            float(c.get("rrf_score", 0.0))
-            + filename_boost
-            + tier_delta
-            + doc_scope_boost
-        )
-
-    # 9) Reranking
-    candidates.sort(key=lambda x: x.get("pre_rerank_score", 0.0), reverse=True)
-    top_candidates = candidates[:RERANK_CANDIDATES]
-
-    if reranker and top_candidates:
+    # 6) RERANKING SELETTIVO
+    winners = [c for c in candidates if c["final_score"] > 400]
+    others = [c for c in candidates if c["final_score"] <= 400]
+    
+    others.sort(key=lambda x: x["final_score"], reverse=True)
+    top_others = others[:15]
+    
+    if reranker and top_others:
         t0 = time.time()
-
-        pairs = [
-            (query_text, c.get("content", "") or "")
-            for c in top_candidates
-        ]
-
+        pairs = [(query_text, c["content"]) for c in top_others]
         try:
             scores = reranker.predict(pairs)
-
             for i, score in enumerate(scores):
-                top_candidates[i]["final_score"] = (
-                    float(score)
-                    + float(top_candidates[i].get("pre_rerank_score", 0.0))
-                )
-
+                top_others[i]["final_score"] = float(score)
         except Exception as e:
             print(f"⚠️ Reranker Error: {e}")
-
-            for c in top_candidates:
-                c["final_score"] = float(c.get("pre_rerank_score", 0.0))
-
         timings["rerank"] = time.time() - t0
-
-    else:
-        for c in top_candidates:
-            c["final_score"] = float(c.get("pre_rerank_score", 0.0))
-
-    top_candidates.sort(key=lambda x: x.get("final_score", 0.0), reverse=True)
-
-    # 10) Diversification
-    final_selection = diversify(
-        top_candidates,
-        MAX_PER_PAGE,
-        MAX_PER_DOC,
-        FINAL_SOURCES,
-    )
-
-    # 11) Final Postgres enrichment by chunk_uuid
-    pg_rows = fetch_pg_chunks_by_uuid(
-        [str(t.get("id")) for t in final_selection if t.get("id")]
-    )
-
-    counts["pg_enriched_hits"] = len(pg_rows)
-
-    for t in final_selection:
-        uid = str(t.get("id", ""))
-        pg_row = pg_rows.get(uid)
-
-        if not pg_row:
-            continue
-
-        pg_meta = pg_row.get("metadata_json", {}) or {}
-        if isinstance(pg_meta, str):
-            try:
-                pg_meta = json.loads(pg_meta)
-            except Exception:
-                pg_meta = {}
-
-        preferred_content = (
-            pg_row.get("content_raw", "")
-            if PG_PREFER_RAW
-            else (pg_row.get("content_semantic", "") or pg_row.get("content_raw", ""))
-        )
-
-        if preferred_content:
-            t["content"] = preferred_content
-
-        t["filename"] = (
-            t.get("filename")
-            or pg_meta.get("filename")
-            or pg_meta.get("source_name")
-            or "Unknown"
-        )
-
-        t["page"] = int(
-            t.get("page")
-            or pg_meta.get("page_no")
-            or pg_meta.get("page")
-            or 0
-        )
-
-        t["type"] = (
-            t.get("type")
-            or pg_meta.get("toon_type")
-            or pg_meta.get("type")
-            or "text"
-        )
-
-        t["tier"] = normalize_tier_value(
-            t.get("tier")
-            or pg_meta.get("tier")
-            or "C"
-        )
-
-        t["pg_ingestion_ts"] = pg_row.get("ingestion_ts", "")
-        t["pg_source_name"] = pg_meta.get("source_name", "")
-        t["pg_source_type"] = pg_meta.get("source_type", "")
-        t["pg_log_id"] = int(pg_meta.get("log_id") or 0)
-        t["pg_chunk_id"] = int(pg_meta.get("chunk_index") or 0)
-        t["pg_toon_type"] = pg_meta.get("toon_type", "")
-
-        if "PG_Enrich" not in t["origin"]:
-            t["origin"] += " + PG_Enrich"
-
-    counts["tier_split"] = dict(
-        Counter(normalize_tier_value(str(s.get("tier", "UNKNOWN"))) for s in final_selection)
-    )
-    counts["final_sources"] = len(final_selection)
-    timings["total"] = time.time() - t_total0
+    
+    final_pool = winners + top_others
+    final_pool.sort(key=lambda x: x["final_score"], reverse=True)
+    
+    # 7) Selezione Finale (DIVERSIFY)
+    final_selection = diversify(final_pool, MAX_PER_PAGE, MAX_PER_DOC, 5)
 
     print("-" * 20)
     print("🏆 CLASSIFICA FINALE (Top 3):")
-
     for i, s in enumerate(final_selection[:3]):
-        print(
-            f"  {i + 1}. {s.get('filename')} "
-            f"(Score: {float(s.get('final_score', 0.0)):.3f}) - {s.get('origin')}"
-        )
+        print(f"  {i+1}. {s['filename']} (Score: {s['final_score']:.1f}) - {s['origin']}")
+    print("="*40 + "\n")
 
-    print("=" * 40 + "\n")
-
-    # 12) Output SourceItem construction
-    sources: List[SourceItem] = []
-
+    # 8) Output Object Construction
+    sources = []
     for t in final_selection:
-        sources.append(
-            SourceItem(
-                id=str(t.get("id", "")),
-                content=t.get("content", ""),
-                filename=t.get("filename", "Unknown"),
-                page=int(t.get("page") or 0),
-                type=t.get("type", "text"),
-                score=float(t.get("final_score", 0.0)),
-                tier=normalize_tier_value(t.get("tier", "C")),
-                db_origin=t.get("origin", "Unknown"),
-                section_hint=t.get("section_hint", ""),
-                pg_ingestion_ts=t.get("pg_ingestion_ts", ""),
-                pg_source_name=t.get("pg_source_name", ""),
-                pg_source_type=t.get("pg_source_type", ""),
-                pg_log_id=int(t.get("pg_log_id") or 0),
-                pg_chunk_id=int(t.get("pg_chunk_id") or 0),
-                pg_toon_type=t.get("pg_toon_type", ""),
-            )
-        )
+        sources.append(SourceItem(
+            id=t["id"], 
+            content=t["content"],
+            filename=t["filename"], 
+            page=t["page"], 
+            type=t["type"],
+            score=t.get("final_score", 0.0), 
+            tier=t["tier"],
+            db_origin=t.get("origin", "Unknown"), 
+            section_hint=t.get("section_hint", "")
+        ))
 
-    # 13) Final formulas from Neo4j
-    counts["final_formulas"] = 0
-
+    # Graph Formule finali
     if GRAPH_EXPAND_ENABLED and neo4j_driver:
-        chunk_ids = [s.id for s in sources if s.id and s.id != "graph"]
-        formulas = get_formulas_for_chunks(chunk_ids, limit=GRAPH_MAX_FORMULAS)
-
-        counts["final_formulas"] = len(formulas)
-
+        chunk_ids = [s.id for s in sources]
+        formulas = get_formulas_for_chunks(chunk_ids, limit=2)
         if formulas:
-            sources.append(
-                SourceItem(
-                    id="graph",
-                    content="Formule collegate:\n" + "\n".join(formulas),
-                    filename="KG",
-                    page=0,
-                    type="formula",
-                    tier="GRAPH",
-                    score=0.0,
-                    db_origin="Neo4j Formula Lookup",
-                )
-            )
+            sources.append(SourceItem(
+                id="graph", 
+                content="Formule collegate:\n" + "\n".join(formulas), 
+                filename="KG", type="formula", tier="GRAPH"
+            ))
 
-    return sources, build_retrieval_audit_md(
-        query_text,
-        intent,
-        timings,
-        counts,
-        [],
-    )
+    return sources, build_retrieval_audit_md(query_text, intent, timings, counts, [])
 
 
 def build_context_block(sources: List[SourceItem], max_chars: int = MAX_CONTEXT_CHARS) -> str:
@@ -2115,172 +1212,84 @@ def build_context_block(sources: List[SourceItem], max_chars: int = MAX_CONTEXT_
 def build_system_instructions(intent: str) -> str:
     """
     Core system prompt for the LLM.
-    v2.3: Strong grounding + Tier A non-contradiction principle + table-first reconstruction.
+    v2.2: Stronger grounding + Table-first reconstruction.
     """
     base = """
-        ROLE:
-        You are a Senior Quantitative Financial Analyst.
+        ROLE: Senior Quantitative Financial Analyst.
 
-        CORE OBJECTIVE:
-        Answer the user's question using ONLY the provided context snippets.
+        CORE OBJECTIVE: Answer the user's question using ONLY the provided context snippets.
 
         CONTEXT STRUCTURE:
-        The context is provided in chunks with headers like:
-        `--- Source [n] — Filename — Page X — (Type) ---`
+        The context is provided in chunks with headers:
+        `--- Fonte [n] — Filename — Pag X — (Type) ---`
+        You MUST use these headers to locate page-specific info (e.g., "page 9", "Pag 9").
 
-        You MUST use these headers to locate page-specific information.
-        If the user asks about a specific page, document, table, chart, formula, or section,
-        prioritize chunks whose headers match that page or document.
-
-        ### NON-NEGOTIABLE GROUNDING RULES
-
-        0) NO INVENTION:
-        - You are NOT allowed to invent details.
-        - If a detail, row, column, value, name, date, formula, definition, or relationship
-          is not explicitly present in ANY retrieved chunk, you must say it is not available.
-        - Do NOT complete tables from memory, assumptions, common knowledge, or external knowledge.
-
-        SOURCE SUFFICIENCY RULE:
-        If the retrieved sources do not contain explicit evidence for the answer, you MUST reply exactly:
-
-        "I did not find sufficient evidence in the retrieved documents."
-        You MUST NOT answer from general knowledge.
-        You MUST NOT infer missing facts.
-        You MUST NOT complete missing data from assumptions, memory, or external knowledge.
-        Use only the retrieved context.
-
-        SOURCE USAGE POLICY:
-        Default mode is OPEN_CORPUS.
-        If the user asks a conceptual question, answer the core concept using all relevant retrieved sources.
-
-        Use sources as evidence, not as semantic limitations, unless the user explicitly requests:
-        - a specific document;
-        - a specific source;
-        - a specific file;
-        - a specific PDF;
-        - a specific version;
-        - a comparison between specific documents or versions.
-
-        If the user explicitly names one document, file, PDF, source, or version, use only evidence from that named source.
-        If the user explicitly names multiple documents, files, PDFs, sources, or versions, compare or synthesize only across those named sources.
-        If the user asks a general conceptual question, you MAY consolidate evidence from multiple retrieved sources.
-
-        When the same formula, concept, indicator, method, or relationship appears in multiple sources, consolidate the concept and cite all supporting sources.
-        If retrieved sources disagree, highlight the conflict instead of forcing a single answer.
-
-        Do NOT reject useful evidence only because it comes from multiple documents, unless the user explicitly constrained the answer to one document or one version.
+        ### NON-NEGOTIABLE GROUNDING RULES (ANTI-HALLUCINATION)
+        0) You are NOT allowed to invent details.
+        - If a detail (row/column/value/name) is not explicitly present in ANY chunk, you must say it is NOT available.
+        - Do NOT “complete” tables from memory or common knowledge.
 
         1) **METADATA SENSITIVITY (CRITICAL)**:
-        - If the user asks about a specific page, prioritize chunks whose header matches that page.
-        - If the user explicitly names a specific document/file/PDF/source/version, use only chunks from that named source.
-        - If the user asks a conceptual question without naming a specific source, use all relevant retrieved chunks across the corpus.
+        - If the user asks about a specific Page or Document, focus on chunks whose header matches that page/document.
         - If a table spans multiple chunks on the same page, merge them mentally.
 
-        2) TRUTH HIERARCHY:
-        - [TIER A - Methodology]&#58; Highest priority. It defines authoritative methodology, formulas, definitions, validation rules, ontology, schema, and interpretation criteria.
-        - [TIER B - Reference]&#58; Operational details, examples, factual references, and domain documents.
-        - [TIER C - News/Rumors]&#58; Temporal context only. It cannot override Tier A or Tier B.
+        2) **TRUTH HIERARCHY**:
+        - [TIER A - Methodology]: Highest priority.
+        - [TIER B - Reference]: Operational details.
+        - [TIER C - News/Rumors]: Only for temporal context (dates/recent events).
+        - If Tier C contradicts Tier A, warn about conflict.
 
-        3) TIER A NON-CONTRADICTION PRINCIPLE:
-        - The final answer MUST NOT contain any statement that contradicts Tier A.
-        - If Tier B contradicts Tier A, prefer Tier A and explicitly mention the conflict.
-        - If Tier C contradicts Tier A, reject the Tier C claim in the final answer and explicitly mention the conflict.
-        - If multiple Tier A chunks contradict each other, do NOT decide arbitrarily. State that the retrieved Tier A sources are inconsistent and explain the conflict.
-        - Do NOT reconcile contradictions by inventing assumptions.
-        - Do NOT average, merge, or soften contradictory claims unless the sources explicitly provide a reconciliation rule.
-        - A contradiction exists when two retrieved claims cannot both be true for the same entity, metric, formula, methodology, date, scope, or definition.
-        - Before answering, silently verify that every final statement is compatible with Tier A.
-
-        4) VISUAL AND TABLE DATA HANDLING:
-        - Chunks labeled `(image)`, `(table)`, or `(chart)` are AI-extracted descriptions of visual assets.
+        3) **VISUAL/TABLE DATA HANDLING**:
+        - Chunks labeled `(immagine)` / `(table)` / `(chart)` are AI-extracted descriptions of visual assets.
         - Treat them as factual ONLY within what they explicitly state.
-        - If the user asks for data in a table, you MUST extract the rows and columns that are explicitly listed.
-        - Do NOT invent missing rows, missing columns, missing values, or missing units.
+        - If the user asks for “data in the table”, you MUST extract the rows/columns that are explicitly listed and present them.
 
-        5) TABLE RECONSTRUCTION:
-        - If the context includes a Markdown table, reproduce it or the relevant subset.
-        - If the context describes table rows in bullet form, reconstruct a Markdown table with columns.
-        - If one chunk says “table not shown” but another chunk contains the actual rows, prefer the chunk with the actual rows.
-        - Do NOT provide generic summaries when the user asks for table data.
-        - Enumerate the available table content.
+        4) **TABLE RECONSTRUCTION (WHEN ASKED ABOUT A TABLE)**:
+        - If the context includes a Markdown table, reproduce it (or the relevant subset).
+        - If the context describes table rows in bullet form (“ASX 200 → AUD …”), you MUST reconstruct a Markdown table with columns.
+        - If one chunk says “table not shown” but another chunk contains the table rows, prefer the chunk with the actual rows.
+        - NO generic summaries: you must enumerate the table content.
 
-        6) FORMULA HANDLING:
-        - Preserve formula fidelity.
-        - Do NOT alter mathematical symbols, variables, operators, or definitions.
-        - If a formula is split across chunks on the same page, reconstruct it only if the continuation is explicit.
-        - If the formula is incomplete, say that it is incomplete in the retrieved context.
-        - The final formula must not contradict Tier A methodology.
-
-        7) FRAGMENT REASSEMBLY:
-        - If text continues across chunks from the same page, treat it as continuous.
-        - Do not complain about partial data unless the information is missing from ALL relevant chunks.
-        - Do not combine fragments from unrelated documents unless the relationship is explicit.
-
-        INTERNAL CHECKLIST:
-        Before answering, silently check:
-        1. Is every claim supported by the retrieved sources?
-        2. Does any claim contradict Tier A?
-        3. Are there conflicts between Tier A, Tier B, and Tier C?
-        4. Are page and document references respected?
-        5. If evidence is insufficient, is the limitation clearly stated?
-
-        Do not output the checklist.
+        5) **FRAGMENT REASSEMBLY**:
+        - If text continues across chunks (same page), treat it as continuous.
+        - Do not complain about partial data unless the info is missing from ALL chunks.
 
         OUTPUT STRUCTURE:
-        You MUST structure your response in four sections.
+        You MUST structure your response in two parts.
+        
+        PART 1: INTERNAL REASONING (Hidden from user, but crucial)
+        Enclose this in <reasoning> tags.
+        1. Analyze User Intent: Definition vs Calculation vs Lookup.
+        2. Verify Tiers: Do I have Tier A chunks? If yes, prioritize them over Tier B/C.
+        3. Check Conflicts: Does News (Tier C) contradict Methodology (Tier A)?
+        4. Plan Citations: Ensure every assertion has a [Source ID].
+        </reasoning>
 
-        A) Answer
-        - Provide a direct, technical answer in the USER'S LANGUAGE.
+        PART 2: FINAL RESPONSE (Visible to user)
+        **A) Risposta**
+        - Direct, technical answer in the USER'S LANGUAGE.
         - If the user asks about a table, include a reconstructed Markdown table.
-        - Do not include unsupported facts.
-        - Do not include claims that contradict Tier A.
 
-        B) Evidence
-        - Use bullet points citing the source ID(s), for example: "[2] Page 9 lists 10 indices and currencies."
-        - If Tier A was used to resolve a conflict, explicitly state which Tier A source controlled the answer.
+        **B) Evidenze**
+        - Bullet points citing the source ID(s), e.g. "[2] Pag 9 lists 10 indices and currencies."
 
-        C) Limits / Conflicts
-        - Strictly state what is missing.
-        - If there is a contradiction, explain it clearly.
-        - If Tier B or Tier C contradicts Tier A, state that Tier A prevails.
-        - If Tier A sources contradict each other, state that the retrieved methodology sources are inconsistent.
+        **C) Limiti**
+        - State strictly what is missing (e.g., “the PDF table header is present but row values are not in the retrieved chunks”).
 
-        D) Sources
-        - List the filenames used.
-        - Do not expose internal chunk IDs, UUIDs, database IDs, or technical metadata unless explicitly requested.
+        **D) Fonti**
+        - List filenames used.
 
         LANGUAGE RULE:
-        You MUST detect the language of the user's question.
         You MUST respond EXCLUSIVELY in the same language as the user's question.
-        Do not switch language, even if the retrieved sources or system instructions are written in another language.
         """
 
     # Dynamic Intent Injection
     if intent == "formula":
-        base += """
-        INTENT: FORMULA.
-        Prioritize formula fidelity.
-        Reconstruct split formulas only when the continuation is explicitly present.
-        Do not infer missing mathematical terms.
-        The final formula must not contradict Tier A methodology.
-        """
+        base += "\nINTENT: FORMULA. Prioritize formula fidelity. Reconstruct split formulas across chunks.\n"
     elif intent == "table":
-        base += """
-        INTENT: TABLE.
-        The user wants the full available data.
-        Do NOT summarize.
-        Output the complete Markdown table when the data is present.
-        Do not invent missing rows or columns.
-        If table interpretation conflicts with Tier A, Tier A prevails.
-        """
+        base += "\nINTENT: TABLE. The user wants the FULL DATA. Do NOT summarize. Output the complete Markdown table even if it is long.\n"
     elif intent == "chart":
-        base += """
-        INTENT: CHART / DATA.
-        Extract explicit numbers, labels, axes, and trends only.
-        No estimation.
-        No interpolation.
-        If the chart interpretation conflicts with Tier A methodology, Tier A prevails.
-        """
+        base += "\nINTENT: CHART/DATA. Extract explicit numbers/trends only. No estimation.\n"
 
     return base
 
@@ -2400,15 +1409,17 @@ def strip_id_leaks(text: str) -> str:
     """
     if not text:
         return ""
-
-    text = re.sub(r"<reasoning>.*?</reasoning>", "", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"</?reasoning>", "", text, flags=re.IGNORECASE)
-
+    
+    # 1. Rimuove pattern tipo "SourceID: 1" o "File: report.pdf" se compaiono nel testo
     text = re.sub(r"\[SourceID:\s*\d+.*?\]", "", text, flags=re.IGNORECASE)
     text = re.sub(r">>> SOURCE \[\d+\].*?\n", "", text, flags=re.IGNORECASE)
+    
+    # 2. Rimuove UUID tecnici residui (es. 42f22b...)
     text = re.sub(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", "", text)
+    
+    # 3. Pulisce eventuali tag rimasti orfani
     text = text.replace("Tier: A", "").replace("Tier: B", "").replace("Tier: C", "")
-
+    
     return text.strip()
 
 
@@ -2450,10 +1461,7 @@ class State(rx.State):
         self.refresh_gpu()
         self.refresh_backend_status()
     '''
-    
-    def set_sources_modal_open(self, value: bool):
-        self.show_sources_modal = value
-    
+
     def get_context_by_tier(self, query: str, tier: str) -> str:
         try:
             # Usa l'embedder globale già caricato per risparmiare RAM
@@ -2583,60 +1591,13 @@ class State(rx.State):
                 # 1. RECUPERO DATI (Hybrid Search + Rerank)
                 # Qui avviene il calcolo pesante che prima bloccava tutto
                 sources, debug_md = retrieve_v2(user_query)
-
-                if not sources:
-                    self.messages.append(
-                        ChatMessage(
-                            id=str(uuid.uuid4()),
-                            role="assistant",
-                            content=(
-                                "**A) Risposta**\n\n"
-                                "Non ho trovato evidenze sufficienti nei documenti recuperati.\n\n"
-                                "**B) Evidenze**\n\n"
-                                "- Nessuna fonte pertinente recuperata per il documento richiesto.\n\n"
-                                "**C) Limiti**\n\n"
-                                "- Il sistema non deve usare formule provenienti da altri documenti.\n\n"
-                                "**D) Fonti**\n\n"
-                                "- Nessuna fonte utilizzabile."
-                            ),
-                            sources=[],
-                            debug_md=debug_md,
-                        )
-                    )
-                    self.is_processing = False
-                    yield rx.scroll_to("chat_bottom")
-                    return
-
-                if not is_news_query(user_query):
-                    has_tier_a = any((s.tier or "").upper() == "A" for s in sources)
-
-                    if not has_tier_a:
-                        tier_a_context = self.get_context_by_tier(user_query, "A")
-
-                        if tier_a_context:
-                            sources.insert(
-                                0,
-                                SourceItem(
-                                    id="forced_tier_a",
-                                    content=tier_a_context,
-                                    filename="TIER_A_METHODOLOGY",
-                                    page=0,
-                                    type="methodology",
-                                    score=1.0,
-                                    tier="A",
-                                    db_origin="Qdrant Forced Tier A",
-                                    section_hint="Forced methodology context"
-                                )
-                            )
-                                
+                
                 # 2. RAGGRUPPAMENTO FONTI
                 c_a_list, c_b_list, c_c_list, c_g_list = [], [], [], []
 
                 for i, s in enumerate(sources, start=1):
-                    tier_norm = normalize_tier_value(s.tier)
-
                     header = f"--- Fonte [{i}] — {s.filename} — Pag {s.page} — ({s.type}) ---\n"
-                    meta = f"(tier={tier_norm} | db={s.db_origin})\n"
+                    meta = f"(tier={s.tier} | db={s.db_origin})\n"
                     body = (s.content or "").strip()
 
                     if not body:
@@ -2644,13 +1605,13 @@ class State(rx.State):
 
                     snippet = header + meta + body + "\n\n"
 
-                    if tier_norm == "A":
+                    if s.tier == "A":
                         c_a_list.append(snippet)
-                    elif tier_norm == "B":
+                    elif s.tier == "B":
                         c_b_list.append(snippet)
-                    elif tier_norm == "C":
+                    elif s.tier == "C":
                         c_c_list.append(snippet)
-                    elif tier_norm == "GRAPH":
+                    elif s.tier == "GRAPH":
                         c_g_list.append(snippet)
 
                 c_a = "".join(c_a_list).strip()
@@ -2670,20 +1631,7 @@ class State(rx.State):
                 )
 
                 # 4. ASSEMBLAGGIO CONTENUTO UTENTE
-                requested_doc = extract_requested_document(user_query)
-
-                doc_scope_block = ""
-                if requested_doc:
-                    doc_scope_block = (
-                        f"### REQUESTED DOCUMENT SCOPE ###\n"
-                        f"The user explicitly requested this document: {requested_doc}\n"
-                        f"You MUST answer using ONLY sources whose filename matches this requested document.\n"
-                        f"If the retrieved context does not contain sources from this document, answer only:\n"
-                        f"Non ho trovato evidenze sufficienti nei documenti recuperati.\n\n"
-                    )
-
                 final_user_content = (
-                    doc_scope_block +
                     f"### METHODOLOGY [TIER A] ###\n{c_a if c_a else 'No specific methodology found.'}\n\n"
                     f"### RESEARCH [TIER B] ###\n{c_b if c_b else 'No specific research found.'}\n\n"
                     f"### NEWS & EVENTS [TIER C] ###\n{c_c if c_c else 'No recent news found.'}\n\n"
@@ -2812,17 +1760,11 @@ def message_ui(msg: ChatMessage):
                 spacing="2",
             ),
             # Contenuto del Messaggio
-            rx.box(
-                rx.markdown(
-                    msg.content,
-                    width="100%",
-                    overflow_wrap="anywhere",
-                    word_break="break-word",
-                ),
+            rx.markdown(
+                msg.content,
                 width="100%",
-                min_width="0",
-                overflow_x="auto",
-                overflow_y="visible",
+                overflow_wrap="anywhere",
+                word_break="break-word",
             ),
             
             # Badge rapidi sotto il testo (Opzionale, richiama la funzione helper)
@@ -2888,9 +1830,9 @@ def message_ui(msg: ChatMessage):
                                                 rx.hstack(
                                                     rx.badge(s.tier, color_scheme="red", variant="soft"),
                                                     rx.badge(s.db_origin, color_scheme="violet", variant="outline"),
-                                                    rx.text(s.filename, size="1", weight="bold"),
+                                                    rx.text(f"{s.filename}", size="1", weight="bold"),
                                                     rx.spacer(),
-                                                    rx.text("Pag. ", s.page, size="1"),
+                                                    rx.text(f"Pag. {s.page}", size="1"),
                                                     width="100%",
                                                 ),
                                                 rx.text(s.content, size="1", line_clamp=3, font_style="italic", color_scheme="gray"),
@@ -2961,10 +1903,6 @@ def message_ui(msg: ChatMessage):
         align_self=align_self,
         box_shadow="sm",
         margin_y="0.5em",
-        width="fit-content",
-        min_width="280px",
-        flex_shrink="0",
-        overflow="visible",
     )
 
 
@@ -3062,15 +2000,15 @@ def index():
                 text_align="center",
                 flex_shrink="0",
             ),
-
-            # Popup Fonti/Audit
+            
+            # --- Popup Fonti/Audit (una sola volta, fuori dal foreach dei messaggi) ---
             rx.dialog.root(
                 rx.dialog.content(
                     rx.dialog.title(State.modal_title),
                     rx.dialog.description("Fonti e audit della risposta."),
                     rx.divider(),
 
-                    # ====== FONTI ======
+                    # ====== FONTI (Visualizzazione pulita e mirata) ======
                     rx.cond(
                         State.modal_sources.length() > 0,
                         rx.scroll_area(
@@ -3080,51 +2018,24 @@ def index():
                                     lambda s: rx.card(
                                         rx.vstack(
                                             rx.hstack(
-                                                rx.badge(
-                                                    s.tier,
-                                                    color_scheme="tomato",
-                                                    variant="surface",
-                                                ),
-                                                rx.badge(
-                                                    s.db_origin,
-                                                    color_scheme="plum",
-                                                    variant="outline",
-                                                ),
-                                                rx.text(
-                                                    "Doc: ",
-                                                    s.filename,
-                                                    weight="bold",
-                                                    size="2",
-                                                ),
+                                                rx.badge(s.tier, color_scheme="tomato", variant="surface"),
+                                                rx.badge(s.db_origin, color_scheme="plum", variant="outline"),
+                                                rx.text(f"Doc: {s.filename}", weight="bold", size="2"),
                                                 width="100%",
                                                 justify="between",
                                             ),
-                                            rx.text(
-                                                s.content,
-                                                size="1",
-                                                line_clamp=3,
-                                            ),
+                                            rx.text(s.content, size="1", line_clamp=3),
                                             rx.hstack(
-                                                rx.text(
-                                                    "Pagina: ",
-                                                    s.page,
-                                                    size="1",
-                                                    color_scheme="gray",
-                                                ),
+                                                rx.text(f"Pagina: {s.page}", size="1", color_scheme="gray"),
                                                 rx.spacer(),
-                                                rx.text(
-                                                    "Score: ",
-                                                    s.score,
-                                                    size="1",
-                                                    color_scheme="gray",
-                                                ),
+                                                rx.text(f"Score: {s.score}", size="1", color_scheme="gray"),
                                                 width="100%",
                                             ),
                                             spacing="2",
                                         ),
                                         width="100%",
                                         margin_bottom="2",
-                                    ),
+                                    )
                                 ),
                                 spacing="2",
                                 width="100%",
@@ -3132,12 +2043,7 @@ def index():
                             height="400px",
                             type="always",
                         ),
-                        rx.center(
-                            rx.text(
-                                "Nessuna fonte trovata per questo messaggio.",
-                                color="gray",
-                            )
-                        ),
+                        rx.center(rx.text("Nessuna fonte trovata per questo messaggio.", color="gray")),
                     ),
 
                     rx.divider(),
@@ -3160,11 +2066,7 @@ def index():
 
                     rx.hstack(
                         rx.spacer(),
-                        rx.button(
-                            "Chiudi",
-                            variant="soft",
-                            on_click=State.close_sources_audit,
-                        ),
+                        rx.button("Chiudi", variant="soft", on_click=State.close_sources_audit),
                         width="100%",
                         margin_top="1em",
                     ),
@@ -3172,32 +2074,27 @@ def index():
                     max_width="900px",
                     width="90vw",
                 ),
-                open=State.show_sources_modal,
-                on_open_change=State.set_sources_modal_open,
             ),
 
             # Chat scroll area
             rx.scroll_area(
                 rx.vstack(
                     rx.foreach(State.messages, message_ui),
-                    rx.box(id="chat_bottom", height="1px", flex_shrink="0"),
+                    rx.box(id="chat_bottom"),
                     width="100%",
                     padding="1em",
                     max_width="900px",
                     margin="0 auto",
                     spacing="4",
                     min_height="0",
-                    flex_shrink="0",
-                    align_items="stretch",
                 ),
                 width="100%",
                 flex="1",
                 min_height="0",
-                min_width="0",
                 type="always",
                 scrollbars="vertical",
                 id="chat_scroll_area",
-                overflow_x="hidden",
+                overflow_x="hidden",   # <-- IMPORTANT: niente overflow orizzontale nella scroll area
             ),
 
             # Input area
@@ -3207,11 +2104,7 @@ def index():
                         placeholder="Chiedi informazioni sui documenti...",
                         value=State.input_text,
                         on_change=State.set_input_text,
-                        on_key_down=lambda k: rx.cond(
-                            k == "Enter",
-                            State.handle_submit(),
-                            None,
-                        ),
+                        on_key_down=lambda k: rx.cond(k == "Enter", State.handle_submit(), None),
                         radius="full",
                         size="3",
                         flex="1",
@@ -3239,20 +2132,20 @@ def index():
             width="100%",
             spacing="0",
             overflow="hidden",
-            overflow_x="hidden",
+            overflow_x="hidden",  # <-- IMPORTANT
             min_height="0",
         ),
 
-        # ROOT
+        # ROOT: ancorato alla viewport (impedisce al body di "prendere lo scroll")
         width="100%",
-        height="100dvh",
+        height="100dvh",       # più robusto di 100vh
         position="fixed",
         top="0",
         left="0",
         right="0",
         bottom="0",
         overflow="hidden",
-        overflow_x="hidden",
+        overflow_x="hidden",   # <-- IMPORTANT: elimina la scrollbar orizzontale del body
         min_height="0",
     )
 
