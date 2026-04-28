@@ -132,44 +132,9 @@ MAX_ASSISTANT_CHARS = int(os.getenv("MAX_ASSISTANT_CHARS", "12000"))
 AUDIT_ENABLED = True
 AUDIT_LOG_PATH = os.getenv("AUDIT_LOG_PATH", "./rag_audit.jsonl")
 
-# In UI conviene partire con evaluation disabilitata.
-# La faithfulness può essere eseguita dopo, offline o con un bottone dedicato.
-EVAL_ENABLED = os.getenv("EVAL_ENABLED", "0") == "1"
-
-# Può essere lo stesso modello, ma idealmente sarebbe un modello diverso usato come judge.
-EVAL_MODEL_NAME = os.getenv("EVAL_MODEL_NAME", LLM_MODEL_NAME)
-
 # =========================
-# 🧾 LOG PATHS - fuori dalla cartella progetto Reflex
+# 🧠 CARICAMENTO RISORSE
 # =========================
-
-LOG_DIR = os.getenv(
-    "RAG_LOG_DIR",
-    os.path.join(os.path.expanduser("~"), "ai_rag_logs")
-)
-
-os.makedirs(LOG_DIR, exist_ok=True)
-
-AUDIT_ENABLED = os.getenv("AUDIT_ENABLED", "1") == "1"
-AUDIT_LOG_PATH = os.getenv(
-    "AUDIT_LOG_PATH",
-    os.path.join(LOG_DIR, "rag_audit.jsonl")
-)
-
-EVAL_LOG_PATH = os.getenv(
-    "EVAL_LOG_PATH",
-    os.path.join(LOG_DIR, "rag_eval_log.jsonl")
-)
-
-EVAL_MAX_CONTEXT_CHARS = int(os.getenv("EVAL_MAX_CONTEXT_CHARS", "12000"))
-
-# Soglie KPI
-EVAL_MIN_FAITHFULNESS = float(os.getenv("EVAL_MIN_FAITHFULNESS", "0.75"))
-EVAL_MIN_ANSWER_RELEVANCE = float(os.getenv("EVAL_MIN_ANSWER_RELEVANCE", "0.70"))
-
-# Se 1, blocca/sostituisce risposte giudicate non fedeli.
-# Per iniziare ti consiglio 0: prima osservi le metriche, poi eventualmente blocchi.
-EVAL_STRICT_BLOCK = os.getenv("EVAL_STRICT_BLOCK", "0") == "1"
 
 
 
@@ -338,18 +303,6 @@ class AuditTrail(BaseModel):
     llm_model: str = ""
     temperature: float = 0.1
     memory_limit: int = 0
-
-class RagEvalResult(BaseModel):
-    faithfulness: float = 0.0
-    answer_relevance: float = 0.0
-    context_support: float = 0.0
-    hallucination_risk: float = 1.0
-    source_scope_violation: bool = False
-    verdict: str = "UNKNOWN"
-    unsupported_claims: List[str] = Field(default_factory=list)
-    supported_claims: List[str] = Field(default_factory=list)
-    reason: str = ""
-
 
 class ChatMessage(BaseModel):
     id: str
@@ -2459,409 +2412,6 @@ def strip_id_leaks(text: str) -> str:
     return text.strip()
 
 
-def _extract_json_object(text: str) -> Dict[str, Any]:
-    """
-    Estrae un oggetto JSON da una risposta LLM.
-    Serve perché alcuni modelli locali possono aggiungere testo prima/dopo il JSON.
-    """
-    if not text:
-        return {}
-
-    text = text.strip()
-
-    try:
-        return json.loads(text)
-    except Exception:
-        pass
-
-    m = re.search(r"\{.*\}", text, flags=re.DOTALL)
-    if not m:
-        return {}
-
-    try:
-        return json.loads(m.group(0))
-    except Exception:
-        return {}
-
-
-def _clamp01(value: Any, default: float = 0.0) -> float:
-    try:
-        v = float(value)
-        return max(0.0, min(1.0, v))
-    except Exception:
-        return default
-
-
-def build_eval_context(sources: List[SourceItem], max_chars: int = EVAL_MAX_CONTEXT_CHARS) -> str:
-    """
-    Costruisce il contesto da passare al judge.
-    Qui NON servono chunk_id tecnici: bastano fonte, pagina, tier e contenuto.
-    """
-    parts = []
-    total = 0
-
-    for i, s in enumerate(sources, start=1):
-        if not s.content:
-            continue
-
-        header = (
-            f"--- SOURCE [{i}] ---\n"
-            f"filename: {s.filename}\n"
-            f"page: {s.page}\n"
-            f"type: {s.type}\n"
-            f"tier: {normalize_tier_value(s.tier)}\n"
-            f"origin: {s.db_origin}\n"
-        )
-
-        body = (s.content or "").strip()
-        block = header + body + "\n\n"
-
-        if total + len(block) > max_chars:
-            remaining = max_chars - total - len(header) - 100
-            if remaining <= 300:
-                break
-            block = header + body[:remaining] + "\n\n"
-
-        parts.append(block)
-        total += len(block)
-
-        if total >= max_chars:
-            break
-
-    return "".join(parts).strip()
-
-
-def append_rag_eval_log(
-    query_text: str,
-    answer: str,
-    sources: List[SourceItem],
-    eval_result: RagEvalResult,
-    requested_doc: str = "",
-):
-    """
-    Salva le metriche KPI in JSONL.
-    Non salva necessariamente tutto il contesto, ma salva abbastanza per audit tecnico.
-    """
-    if not EVAL_ENABLED:
-        return
-
-    try:
-        row = {
-            "ts_utc": datetime.utcnow().isoformat(),
-            "query": query_text,
-            "requested_doc": requested_doc,
-            "answer_sha256": hashlib.sha256((answer or "").encode("utf-8")).hexdigest(),
-            "sources": [
-                {
-                    "filename": s.filename,
-                    "page": s.page,
-                    "type": s.type,
-                    "tier": normalize_tier_value(s.tier),
-                    "db_origin": s.db_origin,
-                    "score": s.score,
-                }
-                for s in sources
-            ],
-            "metrics": eval_result.model_dump(),
-            "llm_model": LLM_MODEL_NAME,
-            "eval_model": EVAL_MODEL_NAME,
-        }
-
-        with open(EVAL_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
-
-    except Exception as e:
-        print(f"⚠️ RAG eval log write error: {e}")
-
-
-def evaluate_rag_answer(
-    query_text: str,
-    answer: str,
-    sources: List[SourceItem],
-    requested_doc: str = "",
-) -> RagEvalResult:
-    """
-    Valuta la risposta rispetto ai documenti recuperati.
-
-    Metriche:
-    - faithfulness: quanto la risposta è supportata dalle fonti
-    - answer_relevance: quanto risponde alla domanda
-    - context_support: quanto il contesto contiene evidenza sufficiente
-    - hallucination_risk: rischio di allucinazione
-    - source_scope_violation: True se usa fonti fuori scope documentale
-    """
-    if not EVAL_ENABLED:
-        return RagEvalResult(
-            faithfulness=1.0,
-            answer_relevance=1.0,
-            context_support=1.0,
-            hallucination_risk=0.0,
-            verdict="DISABLED",
-            reason="Evaluation disabled.",
-        )
-
-    if not llm_client:
-        return RagEvalResult(
-            verdict="ERROR",
-            reason="LLM client not initialized for evaluation.",
-        )
-
-    if not answer or not answer.strip():
-        return RagEvalResult(
-            verdict="FAIL",
-            reason="Empty answer.",
-        )
-
-    if not sources:
-        return RagEvalResult(
-            faithfulness=0.0,
-            answer_relevance=0.0,
-            context_support=0.0,
-            hallucination_risk=1.0,
-            verdict="FAIL",
-            reason="No retrieved sources available.",
-        )
-
-    eval_context = build_eval_context(sources)
-
-    if not eval_context:
-        return RagEvalResult(
-            faithfulness=0.0,
-            answer_relevance=0.0,
-            context_support=0.0,
-            hallucination_risk=1.0,
-            verdict="FAIL",
-            reason="Retrieved sources have no usable textual content.",
-        )
-
-    scope_rule = ""
-    if requested_doc:
-        scope_rule = (
-            f"The user explicitly requested the document/source/version: {requested_doc}. "
-            "Mark source_scope_violation=true if the answer relies on other documents."
-        )
-
-    judge_system = """
-You are a strict RAG faithfulness evaluator.
-
-You must evaluate whether the ANSWER is supported ONLY by the provided SOURCES.
-
-Return ONLY valid JSON with this schema:
-
-{
-  "faithfulness": 0.0,
-  "answer_relevance": 0.0,
-  "context_support": 0.0,
-  "hallucination_risk": 1.0,
-  "source_scope_violation": false,
-  "verdict": "PASS|WARN|FAIL",
-  "unsupported_claims": [],
-  "supported_claims": [],
-  "reason": ""
-}
-
-Scoring rules:
-- faithfulness = 1.0 only if all factual claims in the answer are explicitly supported by the sources.
-- answer_relevance = 1.0 only if the answer directly addresses the user question.
-- context_support = 1.0 only if the retrieved sources contain enough evidence to answer.
-- hallucination_risk = 1.0 when the answer contains unsupported facts.
-- source_scope_violation = true if the answer uses evidence outside the requested document/source/version.
-- Do not use external knowledge.
-- Do not reward plausible but unsupported claims.
-- If the answer correctly says that evidence is insufficient, faithfulness can be high.
-"""
-
-    judge_user = f"""
-### USER QUESTION
-{query_text}
-
-### REQUESTED SOURCE SCOPE
-{scope_rule if scope_rule else "No explicit document/source/version constraint."}
-
-### SOURCES
-{eval_context}
-
-### ANSWER TO EVALUATE
-{answer}
-"""
-
-    try:
-        resp = llm_client.chat.completions.create(
-            model=EVAL_MODEL_NAME,
-            messages=[
-                {"role": "system", "content": judge_system},
-                {"role": "user", "content": judge_user},
-            ],
-            temperature=0.0,
-            stream=False,
-            extra_body={
-                "options": {
-                    "num_ctx": 8192,
-                    "num_predict": 768,
-                    "repeat_penalty": 1.05,
-                }
-            },
-        )
-
-        raw = resp.choices[0].message.content or ""
-        data = _extract_json_object(raw)
-
-        result = RagEvalResult(
-            faithfulness=_clamp01(data.get("faithfulness"), 0.0),
-            answer_relevance=_clamp01(data.get("answer_relevance"), 0.0),
-            context_support=_clamp01(data.get("context_support"), 0.0),
-            hallucination_risk=_clamp01(data.get("hallucination_risk"), 1.0),
-            source_scope_violation=bool(data.get("source_scope_violation", False)),
-            verdict=str(data.get("verdict", "UNKNOWN")).upper(),
-            unsupported_claims=list(data.get("unsupported_claims", []) or []),
-            supported_claims=list(data.get("supported_claims", []) or []),
-            reason=str(data.get("reason", "") or ""),
-        )
-
-        if result.verdict not in ("PASS", "WARN", "FAIL"):
-            if (
-                result.faithfulness >= EVAL_MIN_FAITHFULNESS
-                and result.answer_relevance >= EVAL_MIN_ANSWER_RELEVANCE
-                and not result.source_scope_violation
-            ):
-                result.verdict = "PASS"
-            elif result.faithfulness >= 0.55:
-                result.verdict = "WARN"
-            else:
-                result.verdict = "FAIL"
-
-        return result
-
-    except Exception as e:
-        print(f"⚠️ RAG evaluation error: {e}")
-        return RagEvalResult(
-            verdict="ERROR",
-            reason=str(e),
-        )
-
-
-def format_eval_debug_md(eval_result: RagEvalResult) -> str:
-    """
-    Formatta le metriche nel pannello Audit della UI.
-    """
-    unsupported = eval_result.unsupported_claims[:5]
-    supported = eval_result.supported_claims[:5]
-
-    lines = []
-    lines.append("### 🧪 RAG Faithfulness Evaluation")
-    lines.append(f"- **Verdict**: `{eval_result.verdict}`")
-    lines.append(f"- **Faithfulness**: **{eval_result.faithfulness:.2f}**")
-    lines.append(f"- **Answer relevance**: **{eval_result.answer_relevance:.2f}**")
-    lines.append(f"- **Context support**: **{eval_result.context_support:.2f}**")
-    lines.append(f"- **Hallucination risk**: **{eval_result.hallucination_risk:.2f}**")
-    lines.append(f"- **Source scope violation**: **{eval_result.source_scope_violation}**")
-
-    if eval_result.reason:
-        lines.append(f"- **Reason**: {eval_result.reason}")
-
-    if unsupported:
-        lines.append("\n#### Unsupported claims")
-        for c in unsupported:
-            lines.append(f"- {c}")
-
-    if supported:
-        lines.append("\n#### Supported claims")
-        for c in supported:
-            lines.append(f"- {c}")
-
-    return "\n".join(lines).strip()
-
-# =========================
-# 🛡️ UI SAFETY HELPERS
-# =========================
-
-MAX_UI_SOURCES = int(os.getenv("MAX_UI_SOURCES", "8"))
-MAX_UI_SOURCE_CONTENT_CHARS = int(os.getenv("MAX_UI_SOURCE_CONTENT_CHARS", "900"))
-MAX_UI_DEBUG_CHARS = int(os.getenv("MAX_UI_DEBUG_CHARS", "6000"))
-
-
-def ui_safe_text(value, max_chars: int) -> str:
-    """
-    Versione minimale e compatibile con Reflex.
-    Serve solo a evitare testi enormi o caratteri di controllo nella UI.
-    Non altera il contenuto usato dal RAG/LLM.
-    """
-    if value is None:
-        return ""
-
-    try:
-        text = str(value)
-    except Exception:
-        text = ""
-
-    # Rimuove caratteri di controllo problematici per JSON/React.
-    text = text.replace("\x00", "")
-    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", text)
-
-    if len(text) > max_chars:
-        text = text[:max_chars] + "\n\n...[contenuto troncato per la UI]"
-
-    return text
-
-
-def ui_safe_int(value, default: int = 0) -> int:
-    try:
-        return int(value)
-    except Exception:
-        return default
-
-
-def ui_safe_float(value, default: float = 0.0) -> float:
-    try:
-        v = float(value)
-        if v != v:  # NaN
-            return default
-        if v == float("inf") or v == float("-inf"):
-            return default
-        return round(v, 4)
-    except Exception:
-        return default
-
-
-def prepare_sources_for_ui(sources: List[SourceItem]) -> List[SourceItem]:
-    """
-    Crea una copia ridotta delle fonti SOLO per la UI.
-    Evita crash o sparizione schermata quando i chunk sono troppo lunghi.
-    """
-    out: List[SourceItem] = []
-
-    for s in (sources or [])[:MAX_UI_SOURCES]:
-        out.append(
-            SourceItem(
-                id=ui_safe_text(getattr(s, "id", ""), 200),
-                content=ui_safe_text(getattr(s, "content", ""), MAX_UI_SOURCE_CONTENT_CHARS),
-                filename=ui_safe_text(getattr(s, "filename", "Unknown"), 240),
-                page=ui_safe_int(getattr(s, "page", 0), 0),
-                type=ui_safe_text(getattr(s, "type", "text"), 80),
-                score=ui_safe_float(getattr(s, "score", 0.0), 0.0),
-                graph_context=[],
-                section_hint=ui_safe_text(getattr(s, "section_hint", ""), 300),
-                image_id=getattr(s, "image_id", None),
-                tier=ui_safe_text(getattr(s, "tier", "C"), 40),
-                pg_ingestion_ts=ui_safe_text(getattr(s, "pg_ingestion_ts", ""), 80),
-                pg_source_name=ui_safe_text(getattr(s, "pg_source_name", ""), 160),
-                pg_source_type=ui_safe_text(getattr(s, "pg_source_type", ""), 80),
-                pg_log_id=ui_safe_int(getattr(s, "pg_log_id", 0), 0),
-                pg_chunk_id=ui_safe_int(getattr(s, "pg_chunk_id", 0), 0),
-                pg_toon_type=ui_safe_text(getattr(s, "pg_toon_type", ""), 80),
-                db_origin=ui_safe_text(getattr(s, "db_origin", "Unknown"), 160),
-            )
-        )
-
-    return out
-
-
-def prepare_debug_for_ui(debug_md: str) -> str:
-    """
-    Riduce l'audit solo per visualizzazione.
-    """
-    return ui_safe_text(debug_md or "", MAX_UI_DEBUG_CHARS)
-
 # =========================
 # 🔄 STATE MANAGEMENT
 # =========================
@@ -3050,7 +2600,7 @@ class State(rx.State):
                                 "- Nessuna fonte utilizzabile."
                             ),
                             sources=[],
-                            debug_md=prepare_debug_for_ui(debug_md),
+                            debug_md=debug_md,
                         )
                     )
                     self.is_processing = False
@@ -3197,66 +2747,17 @@ class State(rx.State):
                         self.messages[-1].content = strip_id_leaks(full_resp)
                         yield
 
-                
-                # ✅ SOLO ALLA FINE agganciamo fonti, audit e KPI di faithfulness
-                answer_clean = strip_id_leaks(full_resp)
-
-                requested_doc = ""
-                try:
-                    requested_doc = extract_requested_document(user_query)
-                except Exception:
-                    requested_doc = ""
-
-                eval_result = evaluate_rag_answer(
-                    query_text=user_query,
-                    answer=answer_clean,
-                    sources=sources,
-                    requested_doc=requested_doc,
-                )
-
-                debug_md += "\n\n" + format_eval_debug_md(eval_result)
-
-                append_rag_eval_log(
-                    query_text=user_query,
-                    answer=answer_clean,
-                    sources=sources,
-                    eval_result=eval_result,
-                    requested_doc=requested_doc,
-                )
-
-                # Modalità osservabilità: mostra la risposta ma segnala il rischio nell'audit.
-                self.messages[-1].content = answer_clean
-
-                # Modalità blocco severo: sostituisce risposte non fedeli.
-                if EVAL_STRICT_BLOCK:
-                    bad_faithfulness = eval_result.faithfulness < EVAL_MIN_FAITHFULNESS
-                    bad_relevance = eval_result.answer_relevance < EVAL_MIN_ANSWER_RELEVANCE
-                    bad_scope = eval_result.source_scope_violation
-
-                    if bad_faithfulness or bad_relevance or bad_scope:
-                        self.messages[-1].content = (
-                            "**A) Risposta**\n\n"
-                            "Non ho trovato evidenze sufficienti nei documenti recuperati.\n\n"
-                            "**B) Evidenze**\n\n"
-                            "- La risposta generata non ha superato il controllo automatico di faithfulness.\n\n"
-                            "**C) Limiti**\n\n"
-                            f"- Faithfulness: {eval_result.faithfulness:.2f}\n"
-                            f"- Answer relevance: {eval_result.answer_relevance:.2f}\n"
-                            f"- Source scope violation: {eval_result.source_scope_violation}\n\n"
-                            "**D) Fonti**\n\n"
-                            "- Vedi pannello Fonti/Audit."
-                        )
-
-                # ✅ SOLO ALLA FINE agganciamo fonti e audit in versione UI-safe
-                # Il RAG usa sources/debug_md completi; la UI riceve una versione ridotta.
-                self.messages[-1].sources = prepare_sources_for_ui(sources)
-                self.messages[-1].debug_md = prepare_debug_for_ui(debug_md)
+                # ✅ SOLO ALLA FINE agganciamo le fonti e l'audit
+                # Questo evita sfarfallii o popup vuoti durante la generazione
+                self.messages[-1].sources = sources
+                self.messages[-1].debug_md = debug_md
                 yield
             else:
                 self.messages[-1].content = "⚠️ LLM non inizializzato. Verifica che Ollama sia attivo."
-                self.messages[-1].sources = prepare_sources_for_ui(sources)
-                self.messages[-1].debug_md = prepare_debug_for_ui(debug_md)
+                self.messages[-1].sources = sources
+                self.messages[-1].debug_md = debug_md
                 yield
+
         finally:
             self.is_processing = False
             self.refresh_gpu()
@@ -3302,7 +2803,7 @@ def message_ui(msg: ChatMessage):
                         variant="soft",
                         color_scheme="gray",
                         size="1",
-                        on_click=State.open_sources_audit(msg.id),
+                        on_click=lambda: State.open_sources_audit(msg.id),
                     ),
                     rx.box(),
                 ),
@@ -3350,7 +2851,7 @@ def message_ui(msg: ChatMessage):
                         ),
                         size="1",
                         variant="soft",
-                        on_click=State.toggle_inline_sources(msg.id),
+                        on_click=lambda: State.toggle_inline_sources(msg.id),
                     ),
                     rx.button(
                         rx.hstack(
@@ -3361,7 +2862,7 @@ def message_ui(msg: ChatMessage):
                         ),
                         size="1",
                         variant="soft",
-                        on_click=State.toggle_inline_audit(msg.id),
+                        on_click=lambda: State.toggle_inline_audit(msg.id),
                     ),
                     rx.spacer(),
                     spacing="2",
@@ -3457,10 +2958,10 @@ def message_ui(msg: ChatMessage):
         padding="1em",
         border_radius="12px",
         max_width="85%",
-        width="85%",
         align_self=align_self,
         box_shadow="sm",
         margin_y="0.5em",
+        width="fit-content",
         min_width="280px",
         flex_shrink="0",
         overflow="visible",
@@ -3487,7 +2988,7 @@ def render_inline_sources(msg: ChatMessage):
                 margin_bottom="0.2em",
                 cursor="pointer",
                 # Cliccando sul badge si apre il pannello dettagli
-                on_click=State.toggle_inline_sources(msg.id),
+                on_click=lambda: State.toggle_inline_sources(msg.id), 
             )
         ),
         wrap="wrap",
@@ -3706,11 +3207,11 @@ def index():
                         placeholder="Chiedi informazioni sui documenti...",
                         value=State.input_text,
                         on_change=State.set_input_text,
-                        #on_key_down=lambda k: rx.cond(
-                        #    k == "Enter",
-                        #    State.handle_submit(),
-                        #    None,
-                        #),
+                        on_key_down=lambda k: rx.cond(
+                            k == "Enter",
+                            State.handle_submit(),
+                            None,
+                        ),
                         radius="full",
                         size="3",
                         flex="1",
