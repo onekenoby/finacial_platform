@@ -2279,8 +2279,8 @@ def build_system_instructions(intent: str) -> str:
 
         Do not output the checklist.
 
-OUTPUT STRUCTURE:
-        You MUST structure your response in four sections. Do NOT output any other sections.
+        OUTPUT STRUCTURE:
+        You MUST structure your response in four sections.
 
         A) Answer
         - Provide a direct, technical answer in the USER'S LANGUAGE.
@@ -2301,10 +2301,6 @@ OUTPUT STRUCTURE:
         D) Sources
         - List the filenames used.
         - Do not expose internal chunk IDs, UUIDs, database IDs, or technical metadata unless explicitly requested.
-
-        FORMATTING RESTRICTIONS (CRITICAL):
-        - Do NOT include internal system headers (like 'NEWS & EVENTS', 'KNOWLEDGE GRAPH', or 'USER QUESTION') in your final output.
-        - ONLY output the four requested sections: A) Risposta, B) Evidenze, C) Limiti, D) Fonti.
 
         LANGUAGE RULE:
         You MUST detect the language of the user's question.
@@ -3212,13 +3208,13 @@ class State(rx.State):
                 stream = llm_client.chat.completions.create(
                     model=LLM_MODEL_NAME, 
                     messages=final_messages, 
-                    temperature=0.15, # Leggermente alzata (da 0.0 a 0.15) per evitare loop ripetitivi sulle chat lunghe
+                    temperature=0.0, # Temperatura 0 per precisione sui numeri
                     stream=True,
                     extra_body={
                         "options": {
                             "num_ctx": 8192,       # <--- ESTENDE LA MEMORIA (Evita tagli documenti)
                             "num_predict": 4096,   # Lunghezza massima risposta
-                            "repeat_penalty": 1.15 # <--- Aumentata leggermente (da 1.1 a 1.15) per disincentivare la copia esatta
+                            "repeat_penalty": 1.1  # Riduce le ripetizioni
                         }
                     }
                 )

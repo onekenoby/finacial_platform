@@ -1570,7 +1570,7 @@ def search_pg_by_document_scope(
     finally:
         pg_pool.putconn(conn)
 
-def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
+def retrieve_v2(query_text: str, active_doc: str = "") -> Tuple[List[SourceItem], str]:
     """
     Retrieval V5:
     - Qdrant vector search
@@ -1593,7 +1593,13 @@ def retrieve_v2(query_text: str) -> Tuple[List[SourceItem], str]:
     counts: Dict[str, Any] = {}
     intent = detect_intent(query_text)
 
-    requested_doc = extract_requested_document(query_text)
+
+    # LOGICA DI MEMORIA:
+    extracted_doc = extract_requested_document(query_text)
+    
+    # Se l'utente nomina un file ora, usa quello. 
+    # Altrimenti usa quello che abbiamo in memoria (active_doc).
+    requested_doc = extracted_doc if extracted_doc else active_doc
     requested_doc_norm = normalize_doc_name(requested_doc)
 
     if requested_doc:
@@ -2273,28 +2279,32 @@ def build_system_instructions(intent: str) -> str:
 
         Do not output the checklist.
 
-        OUTPUT STRUCTURE:
-        You MUST structure your response in four sections.
+OUTPUT STRUCTURE:
+        You MUST structure your response in EXACTLY these four sections, using these EXACT Italian headers:
 
-        A) Answer
+        **A) Risposta**
         - Provide a direct, technical answer in the USER'S LANGUAGE.
         - If the user asks about a table, include a reconstructed Markdown table.
         - Do not include unsupported facts.
         - Do not include claims that contradict Tier A.
 
-        B) Evidence
-        - Use bullet points citing the source ID(s), for example: "[2] Page 9 lists 10 indices and currencies."
+        **B) Evidenze**
+        - Use bullet points citing the source ID(s), for example: "[2] Pagina 9 elenca 10 indici."
         - If Tier A was used to resolve a conflict, explicitly state which Tier A source controlled the answer.
 
-        C) Limits / Conflicts
+        **C) Limiti / Conflitti**
         - Strictly state what is missing.
         - If there is a contradiction, explain it clearly.
         - If Tier B or Tier C contradicts Tier A, state that Tier A prevails.
         - If Tier A sources contradict each other, state that the retrieved methodology sources are inconsistent.
 
-        D) Sources
+        **D) Fonti**
         - List the filenames used.
         - Do not expose internal chunk IDs, UUIDs, database IDs, or technical metadata unless explicitly requested.
+
+        FORMATTING RESTRICTIONS (CRITICAL):
+        - Do NOT include internal system headers (like 'NEWS & EVENTS', 'KNOWLEDGE GRAPH', or 'USER QUESTION') in your final output.
+        - ONLY output the exact four requested headers verbatim: "**A) Risposta**", "**B) Evidenze**", "**C) Limiti / Conflitti**", "**D) Fonti**". Do NOT create new sections (like 'E', 'Grafici', or 'Note') and do NOT comment on empty context blocks.
 
         LANGUAGE RULE:
         You MUST detect the language of the user's question.
@@ -2875,8 +2885,11 @@ class State(rx.State):
     ]
     input_text: str = ""
     is_processing: bool = False
-
+    
+    current_active_doc: str = ""
     inline_open_for: str = ""
+    
+    
     inline_tab: str = "sources"
 
     vram_info: str = "N/A"
@@ -3030,9 +3043,16 @@ class State(rx.State):
                 # In Analytics Mode, i dati sono nella domanda stessa
                 final_user_content = f"### QUESTION ###\n{user_query}{language_reminder}"
             else:
+                # --- INIZIO NUOVA LOGICA: MEMORIA DI CONTESTO ---
+                # Estraiamo il documento dalla query. Se c'è, lo salviamo in memoria.
+                extracted_doc = extract_requested_document(user_query)
+                if extracted_doc:
+                    self.current_active_doc = extracted_doc
+
                 # 1. RECUPERO DATI (Hybrid Search + Rerank)
-                # Qui avviene il calcolo pesante che prima bloccava tutto
-                sources, debug_md = retrieve_v2(user_query)
+                # Passiamo il documento in memoria (active_doc) alla funzione di ricerca
+                sources, debug_md = retrieve_v2(user_query, active_doc=self.current_active_doc)
+                # --- FINE NUOVA LOGICA ---
 
                 if not sources:
                     self.messages.append(
@@ -3056,6 +3076,19 @@ class State(rx.State):
                     self.is_processing = False
                     yield rx.scroll_to("chat_bottom")
                     return
+                
+                # --- INIZIO NUOVA LOGICA: PROMPT ANTI-CONTAMINAZIONE IN INGLESE ---
+                # Subito dopo il blocco "if not sources:", creiamo le istruzioni di sistema
+                # e aggiungiamo il guardrail robusto.
+                system_instructions = build_system_instructions(intent)
+                system_instructions += """
+                
+                8) ANTI-CONTAMINATION AND DISAMBIGUATION (CRITICAL):
+                - If the user specifies or implies a specific document context, you MUST STRICTLY IGNORE retrieved chunks from other documents that define the same variables (e.g., 'alpha', 'D') differently.
+                - Mathematical variables are highly context-dependent. Do not mix formulas from 'algorithmic trading' with those from 'asset allocation' or other topics.
+                - If you see conflicting definitions for a variable across different sources, ALWAYS prioritize the definitions from the active requested document context.
+                """
+                # --- FINE NUOVA LOGICA ---
 
                 if not is_news_query(user_query):
                     has_tier_a = any((s.tier or "").upper() == "A" for s in sources)
@@ -3173,19 +3206,20 @@ class State(rx.State):
 
             # --- BLOCCO UNICO DI GENERAZIONE CORRETTO ---
             # --- BLOCCO UNICO DI GENERAZIONE (FIXATO) ---
+
             full_resp = ""
             if llm_client:
                 # Usiamo extra_body per passare i parametri OLLAMA (memoria estesa)
                 stream = llm_client.chat.completions.create(
                     model=LLM_MODEL_NAME, 
                     messages=final_messages, 
-                    temperature=0.0, # Temperatura 0 per precisione sui numeri
+                    temperature=0.15, # Leggermente alzata per evitare loop ripetitivi
                     stream=True,
                     extra_body={
                         "options": {
                             "num_ctx": 8192,       # <--- ESTENDE LA MEMORIA (Evita tagli documenti)
                             "num_predict": 4096,   # Lunghezza massima risposta
-                            "repeat_penalty": 1.1  # Riduce le ripetizioni
+                            "repeat_penalty": 1.15 # <--- Aumentata per disincentivare la copia esatta
                         }
                     }
                 )

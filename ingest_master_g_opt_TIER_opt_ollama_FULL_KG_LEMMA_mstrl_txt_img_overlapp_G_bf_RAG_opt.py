@@ -1582,17 +1582,6 @@ def normalize_entity_id(s: str) -> str:
     s = re.sub(r"\s+", " ", s)
     return s[:180]
 
-def normalize_doc_name(value: str) -> str:
-    """Sincronizzato con gui_reflex.py"""
-    if not value: return ""
-    v = os.path.basename(str(value).lower().strip())
-    v = re.sub(r"\.(pdf|md|txt|docx|html)$", "", v)
-    v = re.sub(r"[_\-\s]+out$", "", v)
-    v = re.sub(r"[_\-\s]+output$", "", v)
-    v = re.sub(r"[^a-z0-9]+", "", v)
-    return v
-
-
 
 import json
 import re
@@ -2352,12 +2341,11 @@ MERGE (p)-[:HAS_CHUNK]->(c)
 // 4) Entità (collegate ESCLUSIVAMENTE al Chunk)
 WITH r, c
 UNWIND coalesce(r.nodes, []) AS n
-WITH n, c, r
+WITH n, c
 WHERE n.id IS NOT NULL AND n.id <> ""
 
 MERGE (e:Entity {id: n.id})
 SET e.name = n.id,
-    e.filename = r.filename_norm,
     e.category = CASE WHEN n.category IS NOT NULL AND n.category <> 'UNCLASSIFIED' THEN n.category ELSE coalesce(e.category, 'UNCLASSIFIED') END
 SET e += coalesce(n.props, {})
 
@@ -3364,12 +3352,6 @@ def llm_extract_kg(filename: str, page_no, text: str, model_name: str):
 
     # UNICO PROMPT: FLAT SCHEMA
     FLAT_KG_PROMPT = """You are an Expert Financial Knowledge Graph Extractor.
-
-
-CRITICAL DISAMBIGUATION RULES FOR NEO4J:
-- For mathematical variables or generic parameters (e.g., 'alpha', 'D', 'beta'), you MUST append the core topic of the current document in parentheses to the ID, e.g., "alpha (Smoothing Factor)" or "D (Seasonal Matrix)".
-- Do not create isolated generic nodes like "alpha". Always disambiguate them.
-- Ensure each extracted entity is strictly relevant to the document context.
 
 CRITICAL JSON SCHEMA REQUIREMENT:
 Every node object MUST contain EXACTLY these 5 keys. Missing keys will crash the system.
@@ -5039,7 +5021,6 @@ def process_ai_and_db(file_path: str, source_type: str, doc_meta: dict, chunks: 
             neo4j_rows.append({
                 "doc_id": doc_id,
                 "filename": filename,
-                "filename_norm": normalize_doc_name(filename), # <--- AGGIUNTO
                 "doc_type": source_type,
                 "log_id": log_id,
                 "chunk_id": chunk_id,
