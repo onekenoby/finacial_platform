@@ -1,3 +1,5 @@
+from gitdb import stream
+from pydantic_settings import sources
 import reflex as rx
 import torch
 import os
@@ -1398,17 +1400,20 @@ def normalize_doc_name(value: str) -> str:
 
 def extract_requested_document(query_text: str) -> str:
     """
-    Estrae il documento richiesto dalla query.
-    Esempi:
-    - documento TRADING_ALGORITMICO_TES_MIS_out
-    - file Analisi_Tecnica_Trading_graph.pdf
-    - nel pdf XYZ
+    Estrae il documento richiesto dalla query in modo sicuro.
+    Evita falsi positivi come "il documento consiglia...".
     """
     q = query_text or ""
 
     patterns = [
-        r"\b(?:documento|file|pdf)\s+([A-Za-z0-9_\-\.]+)",
-        r"\b(?:nel|nella|dal|dalla)\s+(?:documento|file|pdf)\s+([A-Za-z0-9_\-\.]+)",
+        # 1. Nome tra virgolette o apici: nel documento "Trading_Tesi"
+        r'\b(?:nel|nella|dal|dalla\s+)?(?:documento|file|pdf)\s+["\']([^"\']+)["\']',
+        
+        # 2. Nome con estensione esplicita: file report.pdf
+        r'\b(?:nel|nella|dal|dalla\s+)?(?:documento|file|pdf)\s+([A-Za-z0-9_\-\.]+\.(?:pdf|md|txt|docx|csv|html))\b',
+        
+        # 3. Nome tecnico con underscore o trattini: documento TRADING_ALGORITMICO
+        r'\b(?:nel|nella|dal|dalla\s+)?(?:documento|file|pdf)\s+([A-Za-z0-9]+[_\-][A-Za-z0-9_\-\.]+)\b',
     ]
 
     for pattern in patterns:
@@ -1417,7 +1422,6 @@ def extract_requested_document(query_text: str) -> str:
             return m.group(1).strip(" .,:;!?\"'")
 
     return ""
-
 
 def candidate_matches_requested_doc(candidate: Dict[str, Any], requested_doc: str) -> bool:
     """
@@ -3118,7 +3122,8 @@ class State(rx.State):
                 for i, s in enumerate(sources, start=1):
                     tier_norm = normalize_tier_value(s.tier)
 
-                    header = f"--- Fonte [{i}] — {s.filename} — Pag {s.page} — ({s.type}) ---\n"
+                    # FIX: Usa "Source" e "Page" per allinearsi perfettamente al System Prompt
+                    header = f"--- Source [{i}] — {s.filename} — Page {s.page} — ({s.type}) ---\n"
                     meta = f"(tier={tier_norm} | db={s.db_origin})\n"
                     body = (s.content or "").strip()
 
@@ -3131,10 +3136,12 @@ class State(rx.State):
                         c_a_list.append(snippet)
                     elif tier_norm == "B":
                         c_b_list.append(snippet)
-                    elif tier_norm == "C":
-                        c_c_list.append(snippet)
                     elif tier_norm == "GRAPH":
                         c_g_list.append(snippet)
+                    else:
+                        # FIX CRITICO: Qualsiasi tier non riconosciuto finisce qui. 
+                        # Nessun chunk recuperato verrà mai più perso.
+                        c_c_list.append(snippet)
 
                 c_a = "".join(c_a_list).strip()
                 c_b = "".join(c_b_list).strip()
@@ -3167,12 +3174,15 @@ class State(rx.State):
 
                 final_user_content = (
                     doc_scope_block +
+                    f"### PROVIDED CONTEXT SNIPPETS ###\n\n"
                     f"### METHODOLOGY [TIER A] ###\n{c_a if c_a else 'No specific methodology found.'}\n\n"
                     f"### RESEARCH [TIER B] ###\n{c_b if c_b else 'No specific research found.'}\n\n"
                     f"### NEWS & EVENTS [TIER C] ###\n{c_c if c_c else 'No recent news found.'}\n\n"
                     f"### KNOWLEDGE GRAPH [NEO4J] ###\n{c_g if c_g else 'No relational/formula data.'}\n\n"
                     f"### USER QUESTION ###\n{user_query}\n"
-                    f"{language_reminder}"
+                    f"{language_reminder}\n\n"
+                    f"CRITICAL REMINDER: You MUST output EXACTLY these four headers and nothing else: "
+                    f"**A) Risposta**, **B) Evidenze**, **C) Limiti / Conflitti**, **D) Fonti**."
                 )
             
             # --- COSTRUZIONE PAYLOAD CHAT ---
@@ -3223,15 +3233,21 @@ class State(rx.State):
                         }
                     }
                 )
-                
+
+
                 for chunk in stream:
                     delta = chunk.choices[0].delta
                     if delta and getattr(delta, "content", None):
                         full_resp += delta.content
                         self.messages[-1].content = strip_id_leaks(full_resp)
-                        yield
+                        try:
+                            yield
+                        except Exception as e:
+                            print(f"⚠️ Client disconnected during stream: {e}")
+                            break # Interrompe l'aggiornamento UI se l'utente ha chiuso la pagina
 
                 
+              
                 # ✅ SOLO ALLA FINE agganciamo fonti, audit e KPI di faithfulness
                 answer_clean = strip_id_leaks(full_resp)
 
